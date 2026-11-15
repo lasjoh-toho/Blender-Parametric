@@ -340,6 +340,260 @@ def print_check_and_stl_export():
     assert os.path.getsize(path) == 84 + 50 * 12, os.path.getsize(path)
 
 
+def sketch_of(obj):
+    return node(obj.param_tree, "PARAM_N_Sketch")
+
+
+def select(sk, points=(), lines=(), circles=()):
+    sk.clear_selection()
+    for i in points:
+        sk.points[i].select = True
+    for i in lines:
+        sk.lines[i].select = True
+    for i in circles:
+        sk.circles[i].select = True
+
+
+@test
+def sketch_rectangle_with_dimensions():
+    bpy.ops.object.select_all(action="DESELECT")
+    bpy.context.view_layer.objects.active = None
+    bpy.ops.param.sketch_add(kind="RECT", x1=0, y1=0, x2=31, y2=19)
+    obj = bpy.context.active_object
+    sk = sketch_of(obj)
+    assert len(sk.lines) == 4 and len(sk.constraints) == 4
+    approx(mesh_stats(obj)["volume"], 31 * 19 * 10)
+    sk.points[0].select = True
+    bpy.ops.param.sketch_fix()
+    select(sk, lines=[0])
+    bpy.ops.param.sketch_constrain(kind="DISTANCE")
+    select(sk, lines=[1])
+    bpy.ops.param.sketch_constrain(kind="DISTANCE")
+    assert sk.sketch_status == "Voll bestimmt", sk.sketch_status
+    sk.constraints[4].value = 40
+    scheduler.flush()
+    approx(mesh_stats(obj)["volume"], 40 * 19 * 10)
+    # drive the height with a named parameter
+    tree = obj.param_tree
+    with scheduler.suspended():
+        p = graph.add_node(tree, "PARAM_N_LengthParam", (-400, 0))
+        p.param_name = "hoehe"
+        p.value = 25
+    sk.constraints[5].expression = "hoehe / 2 + 2.5"
+    scheduler.flush()
+    approx(mesh_stats(obj)["volume"], 40 * 15 * 10)
+    p.value = 35
+    scheduler.flush()
+    approx(mesh_stats(obj)["volume"], 40 * 20 * 10)
+    assert mesh_stats(obj)["non_manifold_edges"] == 0
+
+
+@test
+def sketch_repeated_constraint_and_dimension_text():
+    bpy.ops.object.select_all(action="DESELECT")
+    bpy.context.view_layer.objects.active = None
+    bpy.ops.param.sketch_add(kind="RECT", x1=0, y1=0, x2=31, y2=19)
+    sk = sketch_of(bpy.context.active_object)
+    count = len(sk.constraints)
+    select(sk, lines=[0])
+    bpy.ops.param.sketch_constrain(kind="HORIZONTAL")
+    assert len(sk.constraints) == count, "the same constraint was added twice"
+    from parametric_design.ui.overlay import length_text
+    scene = bpy.context.scene
+    old = (scene.unit_settings.scale_length, scene.unit_settings.length_unit)
+    scene.unit_settings.scale_length = 0.001
+    scene.unit_settings.length_unit = "MILLIMETERS"
+    try:
+        assert length_text(scene, 25.0) == "25 mm", length_text(scene, 25.0)
+        assert length_text(scene, 0.06) == "0.06 mm", length_text(scene, 0.06)
+    finally:
+        scene.unit_settings.scale_length, scene.unit_settings.length_unit = old
+
+
+@test
+def sketch_hole_and_conflict():
+    bpy.ops.object.select_all(action="DESELECT")
+    bpy.context.view_layer.objects.active = None
+    bpy.ops.param.sketch_add(kind="RECT", x1=0, y1=0, x2=40, y2=30)
+    obj = bpy.context.active_object
+    bpy.ops.param.sketch_add(kind="CIRCLE", x1=20, y1=15, x2=25, y2=15)
+    sk = sketch_of(obj)
+    assert len(sk.circles) == 1
+    s = mesh_stats(obj)
+    expected = (40 * 30 - math.pi * 25) * 10
+    assert abs(s["volume"] - expected) / expected < 0.01, (s["volume"], expected)
+    assert s["non_manifold_edges"] == 0, s
+    select(sk, circles=[0])
+    bpy.ops.param.sketch_constrain(kind="RADIUS")
+    sk.constraints[len(sk.constraints) - 1].value = 8
+    scheduler.flush()
+    expected = (40 * 30 - math.pi * 64) * 10
+    assert abs(mesh_stats(obj)["volume"] - expected) / expected < 0.01
+    # contradicting constraint -> reported, mesh kept
+    select(sk, circles=[0])
+    bpy.ops.param.sketch_constrain(kind="RADIUS")
+    sk.constraints[len(sk.constraints) - 1].value = 3
+    scheduler.flush()
+    assert "Konflikt" in sk.sketch_status, sk.sketch_status
+    assert obj.param_tree.param_status.startswith("Fehler")
+    bpy.ops.param.sketch_constraint_remove(index=len(sk.constraints) - 1)
+    assert not obj.param_tree.param_status.startswith("Fehler"), obj.param_tree.param_status
+
+
+@test
+def sketch_session_draws_and_drags():
+    from parametric_design.ops.sketch_session import SketchSession, pressure_snap
+    assert pressure_snap(0.9, True, False) and not pressure_snap(0.1, True, True) and pressure_snap(0.5, True, True)
+    assert pressure_snap(1.0, False, False) is False
+    bpy.ops.object.select_all(action="DESELECT")
+    bpy.context.view_layer.objects.active = None
+    bpy.ops.param.sketch_add(kind="LINE", x1=0, y1=0, x2=20, y2=0)
+    obj = bpy.context.active_object
+    sk = sketch_of(obj)
+    session = SketchSession(sk, grid=1.0)
+    session.tool = "LINE"
+    r = 0.6
+    session.press(20.2, 0.1, r, True)            # picks the existing end point
+    assert len(sk.points) == 2
+    session.press(20.3, 14.8, r, True)           # snaps to the grid and to vertical
+    assert (sk.points[2].x, sk.points[2].y) == (20.0, 15.0), (sk.points[2].x, sk.points[2].y)
+    assert sk.constraints[len(sk.constraints) - 1].kind == "VERTICAL"
+    session.press(0.2, -0.3, r, True)            # closes on the first point
+    assert not session.busy and len(sk.lines) == 3
+    scheduler.flush()
+    approx(mesh_stats(obj)["volume"], 0.5 * 20 * 15 * 10)
+    # free drawing with light pen pressure: no grid snap
+    session.press(50.3, 50.4, r, pressure_snap(0.1, True, True))
+    assert abs(sk.points[3].x - 50.3) < 1e-6
+    assert session.cancel() and len(sk.points) == 3  # the stray point is removed again
+    # drag a corner: the vertical constraint keeps x of point 2 equal to point 1
+    session.tool = "SELECT"
+    select(sk, lines=[0])
+    bpy.ops.param.sketch_fix()
+    session.press(20.0, 15.0, r, False)
+    assert session.drag_point == 2
+    session.move(27.0, 22.0, r, False)
+    scheduler.flush()
+    assert session.release()
+    scheduler.flush()
+    assert abs(sk.points[2].x - 20.0) < 1e-4 and abs(sk.points[2].y - 22.0) < 0.5, (sk.points[2].x, sk.points[2].y)
+    # delete a line -> no closed outline -> empty mesh, no error
+    select(sk, lines=[2])
+    bpy.ops.param.sketch_delete()
+    assert len(obj.data.vertices) == 0 and not obj.param_tree.param_status.startswith("Fehler")
+    select(sk, points=[2])
+    bpy.ops.param.sketch_delete()
+    assert len(sk.points) == 2 and len(sk.lines) == 1, (len(sk.points), len(sk.lines))
+
+
+@test
+def sketch_arc_and_tangent():
+    bpy.ops.object.select_all(action="DESELECT")
+    bpy.context.view_layer.objects.active = None
+    # half disc: arc from (10,0) to (-10,0) around the origin, closed with a line
+    bpy.ops.param.sketch_add(kind="ARC", x1=0, y1=0, x2=10, y2=0, x3=-10, y3=0.001)
+    obj = bpy.context.active_object
+    sk = sketch_of(obj)
+    arc = sk.arcs[0]
+    bpy.ops.param.sketch_add(kind="LINE", x1=sk.points[arc.end].x, y1=sk.points[arc.end].y, x2=10, y2=0)
+    assert len(sk.points) == 3 and len(sk.lines) == 1, (len(sk.points), len(sk.lines))
+    expected = 0.5 * math.pi * 100 * 10
+    s = mesh_stats(obj)
+    assert abs(s["volume"] - expected) / expected < 0.01, (s["volume"], expected)
+    assert s["non_manifold_edges"] == 0
+
+
+class FakeLayout:
+    """Accepts every UILayout call and checks that operators and properties exist."""
+
+    def __init__(self, log):
+        self.log = log
+
+    def __setattr__(self, name, value):
+        object.__setattr__(self, name, value)
+
+    def operator(self, idname, **kw):
+        module, name = idname.split(".")
+        op = getattr(getattr(bpy.ops, module), name)
+        rna = op.get_rna_type()
+        self.log.append(idname)
+
+        class Props:
+            def __setattr__(s, key, value):
+                assert key in rna.properties, f"{idname} has no property {key}"
+                prop = rna.properties[key]
+                if prop.type == "ENUM":
+                    assert value in {i.identifier for i in prop.enum_items}, f"{idname}.{key} = {value}"
+        return Props()
+
+    def prop(self, data, name, **kw):
+        assert hasattr(data, name), f"{data} has no property {name}"
+
+    def prop_enum(self, data, name, value, **kw):
+        assert set(kw) <= {"text", "text_ctxt", "translate", "icon"}, f"prop_enum does not take {sorted(kw)}"
+        assert value in {i.identifier for i in data.bl_rna.properties[name].enum_items}
+
+    def template_icon(self, icon_value=0, scale=1.0):
+        assert icon_value != 0 or bpy.app.background, "icon missing"
+
+    def __getattr__(self, name):
+        if name in {"row", "column", "box", "grid_flow", "split", "column_flow", "menu_pie"}:
+            return lambda *a, **k: FakeLayout(self.log)
+        if name in {"label", "separator", "menu", "context_pointer_set", "template_ID", "operator_context"}:
+            return lambda *a, **k: None
+        raise AttributeError(name)
+
+
+class FakeRegion:
+    width = 300
+    height = 800
+
+
+@test
+def panels_draw_without_errors():
+    from parametric_design.ui import icons, panels, pie
+    import os
+    # every icon referenced in the UI code exists as a file
+    import re
+    names = set()
+    for mod in (panels, pie):
+        src = open(mod.__file__, encoding="utf-8").read()
+        names |= set(re.findall(r'icons\.get\("([a-z_]+)"\)', src))
+        names |= set(re.findall(r'^\s*\(".*"([a-z_]+)"(?:, current == "[A-Z]+")?\),?\s*$', src, flags=re.M))
+        names |= set(re.findall(r': "(con_[a-z_]+)"', src))
+    missing = sorted(n for n in names if not os.path.exists(os.path.join(icons.ICON_DIR, n + ".png")))
+    assert not missing, missing
+
+    bpy.ops.object.select_all(action="DESELECT")
+    bpy.context.view_layer.objects.active = None
+    bpy.ops.param.sketch_add(kind="RECT", x1=0, y1=0, x2=30, y2=20)
+    obj = bpy.context.active_object
+    sk = sketch_of(obj)
+    select(sk, lines=[0])
+    bpy.ops.param.sketch_constrain(kind="DISTANCE")
+
+    class Ctx:
+        scene = bpy.context.scene
+        window_manager = bpy.context.window_manager
+        preferences = bpy.context.preferences
+        active_object = obj
+        region = FakeRegion()
+        space_data = None
+        mode = "OBJECT"
+
+    log = []
+    for cls in panels.classes:
+        if cls.bl_space_type != "VIEW_3D":
+            continue
+        inst = type("P", (), {"layout": FakeLayout(log)})()
+        cls.draw(inst, Ctx)
+    inst = type("P", (), {"layout": FakeLayout(log)})()
+    pie.PARAM_MT_pie.draw(inst, Ctx)
+    panels.draw_quick_access(inst, Ctx)
+    assert "param.sketch_tool" in log and "param.sketch_constrain" in log and "param.sketch_constraint_remove" in log
+    assert len(log) > 60, len(log)
+
+
 @test
 def reregister_with_existing_trees():
     """Disabling/re-enabling (or reinstalling) must not crash with trees in the file."""

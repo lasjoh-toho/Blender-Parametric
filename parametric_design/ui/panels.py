@@ -3,10 +3,12 @@ import bpy
 
 from ..core import evaluator
 from ..core.evaluator import TREE_ID
-from ..ops import graph
+from ..nodes import sketch as sketch_nodes
+from ..ops import graph, sketch_ops
+from . import icons
 
-BIG = 2.2  # ~44 px buttons at the default UI scale, for stylus and touch
 CATEGORY = "Parametric"
+COLUMNS = 4
 
 
 def _active_tree(context):
@@ -21,10 +23,47 @@ def _active_tree(context):
     return None
 
 
-def _big_grid(layout, columns=2):
-    grid = layout.grid_flow(row_major=True, columns=columns, even_columns=True, even_rows=True, align=True)
-    grid.scale_y = BIG
-    return grid
+def _cell_units(context, columns):
+    """Width of one grid cell in UI units (1 unit = height of a normal button)."""
+    region = context.region
+    ui_scale = context.preferences.system.ui_scale or 1.0
+    unit = 20.0 * ui_scale
+    width = (region.width if region is not None else 240 * ui_scale) - 44 * ui_scale  # tabs, scrollbar, margins
+    gap = 0.1  # space between two tiles
+    return max(2.0, min(6.0, (width / unit - gap * (columns - 1)) / columns))
+
+
+def tool_grid(layout, context, tools, columns=COLUMNS):
+    """Square tiles: a large two-colour icon with the tool button right below it.
+
+    ``tools`` is a list of (operator, properties, label, icon name[, active]). Blender
+    draws icons on buttons at a fixed 16 px, so the large icon is a separate
+    element and the button under it carries the label.
+    """
+    units = _cell_units(context, columns)
+    icon_scale = max(1.6, units - 1.0)
+    col = layout.column(align=False)
+    for start in range(0, len(tools), columns):
+        row = col.row(align=True)
+        row.alignment = "LEFT"
+        for index, tool in enumerate(tools[start:start + columns]):
+            idname, props, label, icon = tool[:4]
+            active = len(tool) > 4 and tool[4]
+            if index:
+                gap = row.column()
+                gap.ui_units_x = 0.1
+                gap.label(text="")
+            cell = row.column(align=True)
+            cell.ui_units_x = units  # fixed width, so a lone tile in a row stays square
+            tile = cell.box()
+            pad = tile.row()
+            pad.alignment = "CENTER"
+            pad.template_icon(icon_value=icons.get(icon), scale=icon_scale)
+            button = cell.row(align=True)
+            button.scale_y = 1.1
+            op = button.operator(idname, text=label, depress=active)
+            for key, value in props.items():
+                setattr(op, key, value)
 
 
 # ---------------------------------------------------------------------------
@@ -44,10 +83,10 @@ def draw_parameters(context, layout):
         row.prop(node, "value", text=node.param_name)
         row.prop(node, "expose", text="", icon="EXPORT" if node.expose else "BLANK1", emboss=node.expose)
     row = layout.row(align=True)
-    row.scale_y = 1.4
-    row.operator("param.add_parameter", text="Länge", icon="ADD").unit = "LENGTH"
-    row.operator("param.add_parameter", text="Winkel", icon="ADD").unit = "ANGLE"
-    row.operator("param.add_parameter", text="Zahl", icon="ADD").unit = "NUMBER"
+    row.scale_y = 1.6
+    row.operator("param.add_parameter", text="Länge", icon_value=icons.get("param_length")).unit = "LENGTH"
+    row.operator("param.add_parameter", text="Winkel", icon_value=icons.get("param_angle")).unit = "ANGLE"
+    row.operator("param.add_parameter", text="Zahl", icon_value=icons.get("param_number")).unit = "NUMBER"
 
     node = tree.nodes.active
     if node is None or not hasattr(node, "param_error") or not node.inputs:
@@ -90,12 +129,15 @@ def draw_sync(context, layout):
         row.label(text=out.target.name if out.target else "(kein Objekt)", icon="OUTPUT")
         row.prop(out, "sync_mode", expand=True)
     if graph.is_parametric(obj):
-        grid = _big_grid(layout)
-        grid.operator("param.set_sync", text="Sync (live)", icon="LINKED").mode = "LIVE"
-        grid.operator("param.set_sync", text="Sync aufheben", icon="UNLINKED").mode = "FROZEN"
-        grid.operator("param.relink", text="Re-link", icon="FILE_REFRESH")
-        grid.operator("param.bake", text="Bake", icon="MESH_DATA")
-    layout.operator("param.recalculate", text="Neu berechnen", icon="FILE_REFRESH")
+        tool_grid(layout, context, [
+            ("param.set_sync", {"mode": "LIVE"}, "Sync", "sync"),
+            ("param.set_sync", {"mode": "FROZEN"}, "Aufheben", "unsync"),
+            ("param.relink", {}, "Re-link", "relink"),
+            ("param.bake", {}, "Bake", "bake"),
+        ])
+    row = layout.row()
+    row.scale_y = 1.4
+    row.operator("param.recalculate", text="Neu berechnen", icon_value=icons.get("recalc"))
     dirty = [n for n in tree.nodes if getattr(n, "param_error", "")]
     if dirty:
         box = layout.box()
@@ -120,9 +162,9 @@ class PARAM_PT_main(_ViewPanel, bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         row = layout.row(align=True)
-        row.scale_y = 1.4
-        row.operator("param.setup_workspace", text="Arbeitsbereich", icon="WORKSPACE")
-        row.operator("param.setup_units", text="mm", icon="DRIVER_DISTANCE")
+        row.scale_y = 1.6
+        row.operator("param.setup_workspace", text="Arbeitsbereich", icon_value=icons.get("workspace"))
+        row.operator("param.setup_units", text="mm", icon_value=icons.get("units"))
         obj = context.active_object
         if graph.is_parametric(obj):
             layout.label(text=f"{obj.name} · {obj.param_tree.name}", icon="MOD_BUILD")
@@ -138,10 +180,12 @@ class PARAM_PT_primitives(_ViewPanel, bpy.types.Panel):
     bl_parent_id = "PARAM_PT_main"
 
     def draw(self, context):
-        grid = _big_grid(self.layout)
-        for kind, text, icon in (("BOX", "Box", "MESH_CUBE"), ("CYLINDER", "Zylinder", "MESH_CYLINDER"),
-                                 ("SPHERE", "Kugel", "MESH_UVSPHERE"), ("CONE", "Kegel", "MESH_CONE")):
-            grid.operator("param.add_part", text=text, icon=icon).kind = kind
+        tool_grid(self.layout, context, [
+            ("param.add_part", {"kind": "BOX"}, "Box", "box"),
+            ("param.add_part", {"kind": "CYLINDER"}, "Zylinder", "cylinder"),
+            ("param.add_part", {"kind": "SPHERE"}, "Kugel", "sphere"),
+            ("param.add_part", {"kind": "CONE"}, "Kegel", "cone"),
+        ])
 
 
 class PARAM_PT_sketch(_ViewPanel, bpy.types.Panel):
@@ -150,44 +194,132 @@ class PARAM_PT_sketch(_ViewPanel, bpy.types.Panel):
 
     def draw(self, context):
         layout = self.layout
-        for mode, label in (("EXTRUDE", "Extrudieren"), ("REVOLVE", "Rotieren")):
-            layout.label(text=label)
-            grid = _big_grid(layout)
-            for kind, text, icon in (("RECTANGLE", "Rechteck", "MESH_PLANE"), ("CIRCLE", "Kreis", "MESH_CIRCLE"),
-                                     ("POLYGON", "Polygon", "SEQ_CHROMA_SCOPE"), ("POLYLINE", "Polylinie", "IPO_LINEAR")):
-                op = grid.operator("param.add_part", text=text, icon=icon)
-                op.kind = kind
-                op.profile_mode = mode
+        settings = context.scene.param_settings
+        wm = context.window_manager
+        running = wm.param_sketch_running
+        current = wm.param_sketch_tool if running else ""
+        tool_grid(layout, context, [
+            ("param.sketch_tool", {"tool": "LINE"}, "Linie", "sketch_line", current == "LINE"),
+            ("param.sketch_tool", {"tool": "ARC"}, "Bogen", "sketch_arc", current == "ARC"),
+            ("param.sketch_tool", {"tool": "CIRCLE"}, "Kreis", "sketch_circle", current == "CIRCLE"),
+            ("param.sketch_tool", {"tool": "RECT"}, "Rechteck", "sketch_rect", current == "RECT"),
+            ("param.sketch_tool", {"tool": "SELECT"}, "Auswahl", "sketch_select", current == "SELECT"),
+            ("param.sketch_delete", {}, "Löschen", "delete"),
+            ("param.sketch_construction", {}, "Hilfslinie", "construction"),
+        ])
+        if running:
+            row = layout.row()
+            row.scale_y = 1.6
+            row.alert = True
+            row.operator("param.sketch_stop", text="Skizze beenden (Esc)", icon="CHECKMARK")
+        node = sketch_ops.active_sketch(context)
+        if node is not None:
+            conflict = "Konflikt" in node.sketch_status
+            row = layout.row()
+            row.alert = conflict
+            row.label(text=node.sketch_status, icon="ERROR" if conflict else ("CHECKMARK" if node.sketch_dof == 0 and node.points else "INFO"))
+        row = layout.row(align=True)
+        row.prop(settings, "sketch_grid")
+        row.prop(settings, "show_sketch", text="", icon="HIDE_OFF" if settings.show_sketch else "HIDE_ON")
+
+        layout.label(text="Fertige Profile")
+        row = layout.row(align=True)
+        row.scale_y = 1.4
+        row.prop_enum(settings, "profile_mode", "EXTRUDE")
+        row.prop_enum(settings, "profile_mode", "REVOLVE")
+        mode = settings.profile_mode
+        tool_grid(layout, context, [
+            ("param.add_part", {"kind": "RECTANGLE", "profile_mode": mode}, "Rechteck", "rectangle"),
+            ("param.add_part", {"kind": "CIRCLE", "profile_mode": mode}, "Kreis", "circle"),
+            ("param.add_part", {"kind": "POLYGON", "profile_mode": mode}, "Polygon", "polygon"),
+            ("param.add_part", {"kind": "POLYLINE", "profile_mode": mode}, "Polylinie", "polyline"),
+        ])
 
 
-class PARAM_PT_operations(_ViewPanel, bpy.types.Panel):
-    bl_label = "Operationen & Modifier"
+CONSTRAINT_ICONS = {
+    "COINCIDENT": "con_coincident", "HORIZONTAL": "con_horizontal", "VERTICAL": "con_vertical",
+    "DISTANCE": "con_distance", "PARALLEL": "con_parallel", "PERPENDICULAR": "con_perpendicular",
+    "EQUAL": "con_equal", "ANGLE": "con_angle", "POINT_ON_LINE": "con_on_line", "MIDPOINT": "con_midpoint",
+    "RADIUS": "con_radius", "TANGENT": "con_tangent", "POINT_ON_CURVE": "con_on_curve",
+}
+
+
+class PARAM_PT_constraints(_ViewPanel, bpy.types.Panel):
+    bl_label = "Constraints"
     bl_parent_id = "PARAM_PT_main"
 
     def draw(self, context):
         layout = self.layout
-        grid = _big_grid(layout)
-        for kind, text, icon in (("TRANSFORM", "Transform", "ORIENTATION_GLOBAL"), ("BEVEL", "Bevel", "MOD_BEVEL"),
-                                 ("SMOOTH", "Soften", "MOD_SUBSURF"), ("SHELL", "Shell", "MOD_SOLIDIFY"),
-                                 ("MIRROR", "Spiegeln", "MOD_MIRROR"), ("LINEAR_ARRAY", "Array", "MOD_ARRAY"),
-                                 ("RADIAL_ARRAY", "Radial", "FORCE_VORTEX")):
-            grid.operator("param.add_operation", text=text, icon=icon).kind = kind
-        layout.label(text="Boolean (mit 2. gewähltem Objekt)")
-        grid = _big_grid(layout, 3)
-        grid.operator("param.boolean", text="", icon="SELECT_SUBTRACT").operation = "DIFFERENCE"
-        grid.operator("param.boolean", text="", icon="SELECT_EXTEND").operation = "UNION"
-        grid.operator("param.boolean", text="", icon="SELECT_INTERSECT").operation = "INTERSECT"
+        node = sketch_ops.active_sketch(context)
+        if node is None:
+            layout.label(text="Zuerst eine Skizze zeichnen", icon="INFO")
+            return
+
+        def con(kind, label):
+            return ("param.sketch_constrain", {"kind": kind}, label, CONSTRAINT_ICONS[kind])
+
+        tool_grid(layout, context, [
+            con("DISTANCE", "Distanz"), con("ANGLE", "Winkel"), con("TANGENT", "Tangent"), con("PARALLEL", "Parallel"),
+            con("PERPENDICULAR", "Senkr."), con("EQUAL", "Gleich"), ("param.sketch_fix", {}, "Fix", "con_fix"), con("POINT_ON_LINE", "Kolinear"),
+            con("HORIZONTAL", "Horiz."), con("VERTICAL", "Vertikal"), con("COINCIDENT", "Deckung"), con("MIDPOINT", "Mitte"),
+            con("RADIUS", "Radius"),
+        ])
+        if not node.constraints:
+            return
+        layout.label(text="Aktive Constraints")
+        col = layout.column(align=True)
+        for index, c in enumerate(node.constraints):
+            row = col.row(align=True)
+            row.label(text=sketch_nodes.CONSTRAINT_LABELS[c.kind], icon_value=icons.get(CONSTRAINT_ICONS[c.kind]))
+            if c.has_value:
+                sub = row.row(align=True)
+                sub.enabled = not c.expression.strip()
+                if c.kind == "ANGLE":
+                    sub.prop(c, "value_angle", text="")
+                else:
+                    sub.prop(c, "value_length", text="")
+                row.prop(c, "expression", text="", icon="DRIVER")
+            row.operator("param.sketch_constraint_remove", text="", icon="X").index = index
 
 
-class PARAM_PT_structure(_ViewPanel, bpy.types.Panel):
-    bl_label = "Duplizieren & Gruppen"
+class PARAM_PT_operations(_ViewPanel, bpy.types.Panel):
+    bl_label = "Operationen"
     bl_parent_id = "PARAM_PT_main"
 
     def draw(self, context):
-        grid = _big_grid(self.layout)
-        grid.operator("param.duplicate", text="Duplizieren", icon="DUPLICATE").mode = "COPY"
-        grid.operator("param.duplicate", text="Instanz", icon="LINKED").mode = "INSTANCE"
-        grid.operator("param.group_objects", text="Gruppieren", icon="GROUP")
+        tool_grid(self.layout, context, [
+            ("param.boolean", {"operation": "UNION"}, "Union", "bool_union"),
+            ("param.boolean", {"operation": "DIFFERENCE"}, "Subtract", "bool_difference"),
+            ("param.boolean", {"operation": "INTERSECT"}, "Schnitt", "bool_intersect"),
+            ("param.add_operation", {"kind": "SHELL"}, "Shell", "shell"),
+            ("param.add_operation", {"kind": "MIRROR"}, "Mirror", "mirror"),
+        ])
+
+
+class PARAM_PT_modifiers(_ViewPanel, bpy.types.Panel):
+    bl_label = "Modifier"
+    bl_parent_id = "PARAM_PT_main"
+
+    def draw(self, context):
+        tool_grid(self.layout, context, [
+            ("param.add_operation", {"kind": "TRANSFORM"}, "Bewegen", "transform"),
+            ("param.add_operation", {"kind": "BEVEL"}, "Bevel", "bevel"),
+            ("param.add_operation", {"kind": "SMOOTH"}, "Soften", "smooth"),
+        ])
+
+
+class PARAM_PT_structure(_ViewPanel, bpy.types.Panel):
+    bl_label = "Duplicate, Array & Gruppen"
+    bl_parent_id = "PARAM_PT_main"
+
+    def draw(self, context):
+        tool_grid(self.layout, context, [
+            ("param.duplicate", {"mode": "COPY"}, "Kopie", "duplicate"),
+            ("param.duplicate", {"mode": "INSTANCE"}, "Instance", "instance"),
+            ("param.add_operation", {"kind": "LINEAR_ARRAY"}, "Linear", "array_linear"),
+            ("param.add_operation", {"kind": "RADIAL_ARRAY"}, "Radial", "array_radial"),
+            ("param.group_objects", {}, "Gruppe", "group"),
+        ])
 
 
 class PARAM_PT_parameters(_ViewPanel, bpy.types.Panel):
@@ -233,14 +365,43 @@ class PARAM_PT_print(_ViewPanel, bpy.types.Panel):
 
     def draw(self, context):
         layout = self.layout
-        grid = _big_grid(layout)
-        grid.operator("param.print_check", text="Druck-Check", icon="CHECKMARK")
-        grid.operator("param.export_stl", text="STL", icon="EXPORT")
+        tool_grid(layout, context, [
+            ("param.print_check", {}, "Check", "print_check"),
+            ("param.export_stl", {}, "STL", "export"),
+        ])
         report = context.scene.get("param_print_report")
         if report:
             box = layout.box()
             for i, line in enumerate(report.split("\n")):
                 box.label(text=line, icon=("CHECKMARK" if line == "Druckbereit" else "ERROR") if i == 0 else "BLANK1")
+
+
+def draw_quick_access(self, context):
+    """Quick access bar in the tool header of the 3D viewport."""
+    if context.mode != "OBJECT":
+        return
+    layout = self.layout
+    wm = context.window_manager
+    ts = context.scene.tool_settings
+    current = wm.param_sketch_tool if wm.param_sketch_running else ""
+    layout.separator()
+    row = layout.row(align=True)
+    row.scale_x = 1.25
+    row.operator("param.add_part", text="", icon_value=icons.get("box")).kind = "BOX"
+    row.operator("param.add_part", text="", icon_value=icons.get("sphere")).kind = "SPHERE"
+    row.operator("param.sketch_tool", text="", icon_value=icons.get("sketch_line"), depress=current == "LINE").tool = "LINE"
+    row = layout.row(align=True)
+    row.scale_x = 1.25
+    row.operator("param.toggle_snap", text="", icon_value=icons.get("snap"), depress=ts.use_snap)
+    row = layout.row(align=True)
+    row.scale_x = 1.25
+    row.operator("param.group_objects", text="", icon_value=icons.get("group"))
+    row.operator("param.duplicate", text="", icon_value=icons.get("duplicate")).mode = "COPY"
+    row.operator("param.add_operation", text="", icon_value=icons.get("array_linear")).kind = "LINEAR_ARRAY"
+    row = layout.row(align=True)
+    row.scale_x = 1.25
+    row.operator("param.set_sync", text="", icon_value=icons.get("sync")).mode = "LIVE"
+    row.operator("param.set_sync", text="", icon_value=icons.get("unsync")).mode = "FROZEN"
 
 
 # ---------------------------------------------------------------------------
@@ -277,7 +438,9 @@ classes = (
     PARAM_PT_main,
     PARAM_PT_primitives,
     PARAM_PT_sketch,
+    PARAM_PT_constraints,
     PARAM_PT_operations,
+    PARAM_PT_modifiers,
     PARAM_PT_structure,
     PARAM_PT_parameters,
     PARAM_PT_sync,

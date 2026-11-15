@@ -21,19 +21,24 @@ _LENGTH_UNITS = {
 }
 
 
+def length_text(scene, value):
+    """A length in the unit the scene is set to (not Blender's adaptive unit)."""
+    units = scene.unit_settings
+    meters = value * units.scale_length
+    factor, suffix = _LENGTH_UNITS.get(units.length_unit, (None, ""))
+    if units.system == "METRIC" and factor is not None:
+        return f"{meters / factor:.4g} {suffix}"
+    if units.system == "NONE":
+        return f"{value:.4g}"
+    return bpy.utils.units.to_string(units.system, "LENGTH", meters, precision=3)
+
+
 def _format(node, scene):
     unit = getattr(node, "param_unit", "NUMBER")
     if unit == "ANGLE":
         return f"{math.degrees(node.value):.1f}°"
     if unit == "LENGTH":
-        units = scene.unit_settings
-        meters = node.value * units.scale_length
-        factor, suffix = _LENGTH_UNITS.get(units.length_unit, (None, ""))
-        if units.system == "METRIC" and factor is not None:
-            return f"{meters / factor:.4g} {suffix}"
-        if units.system == "NONE":
-            return f"{node.value:.4g}"
-        return bpy.utils.units.to_string(units.system, "LENGTH", meters, precision=3)
+        return length_text(scene, node.value)
     return f"{node.value:g}"
 
 

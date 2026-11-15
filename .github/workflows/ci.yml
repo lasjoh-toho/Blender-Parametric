@@ -20,7 +20,9 @@ jobs:
       - name: Install Blender as Python module
         run: pip install bpy==5.3.0
       - name: Run tests
-        run: python tests/run_tests.py
+        run: |
+          python tests/test_solver.py
+          python tests/run_tests.py
       - name: Build extension ZIP
         run: python scripts/build_extension.py
       - uses: actions/upload-artifact@v4

@@ -18,6 +18,7 @@ PART_ITEMS = [
     ("CIRCLE", "Kreis", "", "MESH_CIRCLE", 5),
     ("POLYGON", "Polygon", "", "SEQ_CHROMA_SCOPE", 6),
     ("POLYLINE", "Polylinie", "", "IPO_LINEAR", 7),
+    ("SKETCH", "Skizze", "", "GREASEPENCIL", 8),
 ]
 
 OPERATION_ITEMS = [

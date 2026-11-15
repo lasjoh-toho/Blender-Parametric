@@ -224,6 +224,8 @@ def polygon_points(radius, sides):
 
 def extrude(bm, height, direction=(0.0, 0.0, 1.0)):
     """Extrude every face of a flat profile along ``direction`` by ``height``."""
+    if not bm.verts:
+        return bm  # empty profile (e.g. a sketch without a closed outline yet)
     if not bm.faces:
         raise GeometryError("Extrudieren braucht ein Profil mit Fläche")
     if abs(height) < EPS:
@@ -245,6 +247,8 @@ def revolve(bm, angle, segments, offset=0.0):
     The profile is first turned upright (profile X = distance from the axis,
     profile Y = height) and moved ``offset`` away from the axis.
     """
+    if not bm.verts:
+        return bm
     if not bm.faces:
         raise GeometryError("Rotieren braucht ein Profil mit Fläche")
     segments = max(3, int(segments))

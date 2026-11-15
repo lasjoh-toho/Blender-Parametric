@@ -2,7 +2,7 @@
 import bpy
 
 from ..core.evaluator import TREE_ID
-from . import base, nodes, sockets, tree
+from . import base, nodes, sketch, sockets, tree
 
 
 def _menu_id(index):
@@ -39,7 +39,7 @@ def _draw_add_menu(self, context):
         layout.menu(menu.bl_idname)
 
 
-classes = sockets.classes + tree.classes + nodes.classes + tuple(_menus)
+classes = sockets.classes + tree.classes + nodes.classes + sketch.classes + tuple(_menus)
 
 
 def register():

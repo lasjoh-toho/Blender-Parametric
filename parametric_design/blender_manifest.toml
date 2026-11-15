@@ -1,7 +1,7 @@
 schema_version = "1.0.0"
 
 id = "parametric_design"
-version = "0.1.0"
+version = "0.2.0"
 name = "Parametric Design"
 tagline = "Parametric modeling with tools and a live node graph, ready for 3D printing"
 maintainer = "Jo <https://github.com/lasjoh-toho>"

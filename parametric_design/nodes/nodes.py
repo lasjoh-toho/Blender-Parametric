@@ -7,7 +7,7 @@ import bpy
 from bpy.props import BoolProperty, EnumProperty, FloatProperty, IntProperty, PointerProperty, StringProperty
 from mathutils import Matrix, Vector
 
-from ..core import geometry, modifier_ops
+from ..core import geometry, modifier_ops, units
 from ..core.evaluator import (
     ANGLE, BOOL, FLOAT, GEOMETRY, INT, LENGTH, TREE_ID, VECTOR,
     MAX_GROUP_DEPTH, NodeError, evaluate_geometry,
@@ -18,6 +18,119 @@ from .base import ParamNode, changed
 
 # ---------------------------------------------------------------------------
 # Parameters and inputs
+
+_busy = [0]  # > 0 while a parameter update sets other values
+
+
+def _format_value(node, value):
+    if node.param_unit == "ANGLE":
+        return f"{math.degrees(value):.4g}°"
+    return f"{value:.4g}"
+
+
+def parameter_limits(node, scene=None):
+    """(minimum, maximum) of a parameter in its own unit; None where it is open.
+
+    The minimum can also come from the print profile of the scene (minimum wall, ...).
+    """
+    lo = node.min_value if node.use_min else None
+    hi = node.max_value if node.use_max else None
+    source = getattr(node, "profile_min", "NONE")
+    if source != "NONE":
+        scene = scene or bpy.context.scene
+        profile = getattr(scene, "param_print", None)
+        if profile is not None:
+            mm = {"WALL": profile.min_wall, "DETAIL": profile.min_detail, "CLEARANCE": profile.clearance}[source]
+            value = mm / units.mm_per_unit(scene)
+            lo = value if lo is None else max(lo, value)
+    return lo, hi
+
+
+def proportion_of(tree, node):
+    """The proportion group this parameter belongs to, or None."""
+    for group in tree.param_proportions:
+        if any(m.node == node.name for m in group.members):
+            return group
+    return None
+
+
+def proportion_targets(tree, group, node, value, scene=None):
+    """What the other members become when ``node`` is set to ``value``.
+
+    Returns (list of (node, new value), problem). ``problem`` is a text when a
+    member is locked or would leave its range; then nothing may change.
+    """
+    own = next(m.factor for m in group.members if m.node == node.name)
+    targets = []
+    for member in group.members:
+        other = tree.nodes.get(member.node)
+        if other is None or other == node:
+            continue
+        if group.kind == "RATIO":
+            if abs(own) < 1e-12:
+                continue
+            new = value * member.factor / own
+        else:
+            new = value + (member.factor - own)
+        if abs(new - other.value) < 1e-9:
+            continue
+        if other.locked:
+            return [], f"{other.param_name} ist gesperrt"
+        lo, hi = parameter_limits(other, scene)
+        if lo is not None and new < lo - 1e-9:
+            return [], f"{other.param_name} wäre {_format_value(other, new)}, Minimum {_format_value(other, lo)}"
+        if hi is not None and new > hi + 1e-9:
+            return [], f"{other.param_name} wäre {_format_value(other, new)}, Maximum {_format_value(other, hi)}"
+        targets.append((other, new))
+    return targets, ""
+
+
+def value_changed(self, context):
+    """Update of a parameter value: lock, range and proportion group, then rebuild."""
+    if _busy[0]:
+        return
+    tree = self.id_data
+    scene = getattr(context, "scene", None) or bpy.context.scene
+    notice = ""
+    _busy[0] += 1
+    try:
+        previous = self.last_value if self.has_last else self.value
+        if self.locked:
+            if abs(self.value - previous) > 1e-9:
+                self.value = previous
+                notice = f"{self.param_name} ist gesperrt"
+        else:
+            lo, hi = parameter_limits(self, scene)
+            if lo is not None and self.value < lo:
+                self.value = lo
+                notice = f"{self.param_name}: Minimum {_format_value(self, lo)}"
+            elif hi is not None and self.value > hi:
+                self.value = hi
+                notice = f"{self.param_name}: Maximum {_format_value(self, hi)}"
+            group = proportion_of(tree, self)
+            if group is not None:
+                targets, problem = proportion_targets(tree, group, self, self.value, scene)
+                if problem:
+                    self.value = previous
+                    notice = problem
+                for other, new in targets:
+                    other.value = new
+                    other.last_value = new
+                    other.has_last = True
+                    other.param_dirty = True
+            self.last_value = self.value
+            self.has_last = True
+        if tree.param_notice != notice:
+            tree.param_notice = notice
+    finally:
+        _busy[0] -= 1
+    changed(self, context)
+
+
+def _lock_changed(self, context):
+    self.last_value = self.value
+    self.has_last = True
+
 
 class _ParameterNode(ParamNode):
     """Named value; visible in the side panel and usable by name in formulas."""
@@ -31,10 +144,21 @@ class _ParameterNode(ParamNode):
         default=False,
         update=changed,
     )
+    use_min: BoolProperty(name="Minimum", description="Der Wert bleibt an dieser Untergrenze stehen",
+                          default=False, update=value_changed)
+    use_max: BoolProperty(name="Maximum", description="Der Wert bleibt an dieser Obergrenze stehen",
+                          default=False, update=value_changed)
+    locked: BoolProperty(name="Wert fest", description="Dieser Wert darf sich nicht ändern",
+                         default=False, update=_lock_changed)
+    pick: BoolProperty(name="Auswählen", description="Für „Proportion sperren“ auswählen", default=False)
+    last_value: FloatProperty()
+    has_last: BoolProperty(default=False)
 
     def init(self, context):
         self.add_output(self.socket_type, "Wert")
         self.param_name = self._unique_name()
+        self.last_value = self.value
+        self.has_last = True
 
     def _unique_name(self):
         tree = self.id_data
@@ -45,9 +169,29 @@ class _ParameterNode(ParamNode):
             i += 1
         return f"{base}{i}"
 
+    def draw_range(self, layout):
+        col = layout.column(align=True)
+        row = col.row(align=True)
+        row.prop(self, "use_min", text="Min")
+        sub = row.row(align=True)
+        sub.enabled = self.use_min
+        sub.prop(self, "min_value", text="")
+        row = col.row(align=True)
+        row.prop(self, "use_max", text="Max")
+        sub = row.row(align=True)
+        sub.enabled = self.use_max
+        sub.prop(self, "max_value", text="")
+        if hasattr(self, "profile_min"):
+            layout.prop(self, "profile_min", text="Druck")
+
     def draw_props(self, context, layout):
         layout.prop(self, "param_name", text="")
-        layout.prop(self, "value", text="")
+        row = layout.row(align=True)
+        sub = row.row(align=True)
+        sub.enabled = not self.locked
+        sub.prop(self, "value", text="")
+        row.prop(self, "locked", text="", icon="LOCKED" if self.locked else "UNLOCKED")
+        self.draw_range(layout)
         layout.prop(self, "expose")
 
     def parameter_value(self):
@@ -63,7 +207,20 @@ class PARAM_N_LengthParam(_ParameterNode, bpy.types.Node):
     bl_icon = "DRIVER_DISTANCE"
     param_unit = "LENGTH"
     socket_type = LENGTH
-    value: FloatProperty(name="Wert", default=10.0, subtype="DISTANCE", unit="LENGTH", update=changed)
+    value: FloatProperty(name="Wert", default=10.0, subtype="DISTANCE", unit="LENGTH", update=value_changed)
+    min_value: FloatProperty(name="Minimum", default=0.0, subtype="DISTANCE", unit="LENGTH", update=value_changed)
+    max_value: FloatProperty(name="Maximum", default=100.0, subtype="DISTANCE", unit="LENGTH", update=value_changed)
+    profile_min: EnumProperty(
+        name="Grenze aus Druckprofil",
+        description="Untergrenze aus dem Druckprofil der Szene übernehmen",
+        items=[
+            ("NONE", "Keine", "Keine Grenze aus dem Druckprofil"),
+            ("WALL", "Mindestwand", "Nicht dünner als die Mindestwand des Druckprofils"),
+            ("DETAIL", "Kleinstes Detail", "Nicht kleiner als das kleinste druckbare Detail"),
+            ("CLEARANCE", "Passungsspiel", "Nicht kleiner als das Passungsspiel"),
+        ],
+        default="NONE", update=value_changed,
+    )
 
 
 class PARAM_N_AngleParam(_ParameterNode, bpy.types.Node):
@@ -72,7 +229,9 @@ class PARAM_N_AngleParam(_ParameterNode, bpy.types.Node):
     bl_icon = "DRIVER_ROTATIONAL_DIFFERENCE"
     param_unit = "ANGLE"
     socket_type = ANGLE
-    value: FloatProperty(name="Wert", default=math.radians(45), subtype="ANGLE", update=changed)
+    value: FloatProperty(name="Wert", default=math.radians(45), subtype="ANGLE", update=value_changed)
+    min_value: FloatProperty(name="Minimum", default=0.0, subtype="ANGLE", update=value_changed)
+    max_value: FloatProperty(name="Maximum", default=math.radians(90), subtype="ANGLE", update=value_changed)
 
 
 class PARAM_N_NumberParam(_ParameterNode, bpy.types.Node):
@@ -81,7 +240,9 @@ class PARAM_N_NumberParam(_ParameterNode, bpy.types.Node):
     bl_icon = "DRIVER"
     param_unit = "NUMBER"
     socket_type = FLOAT
-    value: FloatProperty(name="Wert", default=1.0, update=changed)
+    value: FloatProperty(name="Wert", default=1.0, update=value_changed)
+    min_value: FloatProperty(name="Minimum", default=0.0, update=value_changed)
+    max_value: FloatProperty(name="Maximum", default=10.0, update=value_changed)
 
 
 class PARAM_N_Formula(ParamNode, bpy.types.Node):

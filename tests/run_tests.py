@@ -328,13 +328,17 @@ def promote_input_creates_parameter():
 
 @test
 def print_check_and_stl_export():
+    import json
     ctx = bpy.context
     bpy.ops.param.setup_units()
     obj = new_object("BOX")
     bpy.ops.param.print_check()
-    report = ctx.scene["param_print_report"]
-    assert report.startswith("Druckbereit"), report
-    assert "20.00 × 20.00 × 20.00 mm" in report, report
+    report = json.loads(ctx.scene["param_print_report"])
+    assert report["verdict"] == "Druckbereit", report
+    assert report["size"] == "20.00 × 20.00 × 20.00 mm", report
+    assert {c["id"]: c["level"] for c in report["checks"]} == {
+        "watertight": "OK", "normals": "OK", "build_volume": "OK", "wall": "OK",
+        "overhang": "OK", "stability": "OK", "slender": "OK"}, report
     path = os.path.join(tempfile.mkdtemp(), "box.stl")
     bpy.ops.param.export_stl(filepath=path)
     assert os.path.getsize(path) == 84 + 50 * 12, os.path.getsize(path)
@@ -352,6 +356,178 @@ def select(sk, points=(), lines=(), circles=()):
         sk.lines[i].select = True
     for i in circles:
         sk.circles[i].select = True
+
+
+def _block(size, offset=(0.0, 0.0, 0.0), bm=None):
+    """A box of ``size`` mm standing on Z = offset z."""
+    from mathutils import Matrix
+    bm = bm or bmesh.new()
+    matrix = Matrix.Translation((offset[0], offset[1], offset[2] + size[2] / 2)) @ Matrix.Diagonal((*size, 1.0))
+    bmesh.ops.create_cube(bm, size=1.0, matrix=matrix)
+    return bm
+
+
+def _levels(bm, profile=None):
+    from parametric_design.core import print_check
+    bmesh.ops.triangulate(bm, faces=bm.faces[:])
+    checks = print_check.run(bm, dict(profile or print_check.FDM))
+    return {c.id: c for c in checks}
+
+
+@test
+def print_checks_find_problems():
+    from parametric_design.core import print_check
+    cube = _levels(_block((20, 20, 20)))
+    assert all(c.level == "OK" for c in cube.values()), {k: (c.level, c.text) for k, c in cube.items()}
+    approx(cube["stability"].value, 45.0)
+    approx(cube["wall"].value, 20.0)
+
+    plate = _levels(_block((20, 20, 0.5)))
+    assert plate["wall"].level == "FAIL" and plate["wall"].faces, plate["wall"].text
+    approx(plate["wall"].value, 0.5)
+
+    tower = _levels(_block((5, 5, 40)))
+    assert tower["slender"].level == "FAIL", tower["slender"].text
+    approx(tower["slender"].value, 8.0)
+    assert tower["stability"].level == "WARN", tower["stability"].text
+
+    mushroom = _block((10, 10, 10))
+    _block((30, 30, 5), (0, 0, 10), mushroom)
+    mushroom = _levels(mushroom)
+    assert mushroom["overhang"].level == "WARN", mushroom["overhang"].text
+    approx(mushroom["overhang"].value, 30 * 30)  # the bed carries the lower block
+    assert "über 45°" in mushroom["overhang"].text, mushroom["overhang"].text
+
+    leaning = _block((10, 10, 10))
+    _block((10, 10, 10), (30, 0, 10), leaning)
+    _block((10, 10, 10), (60, 0, 10), leaning)
+    assert _levels(leaning)["stability"].level == "FAIL"
+
+    big = _levels(_block((300, 20, 20)))
+    assert big["build_volume"].level == "FAIL", big["build_volume"].text
+    assert _levels(_block((240, 20, 20), ), print_check.RESIN)["build_volume"].level == "FAIL"
+
+    holed = _block((20, 20, 20))
+    bmesh.ops.delete(holed, geom=[holed.faces[:][0]], context="FACES")
+    holed = _levels(holed)
+    assert holed["watertight"].level == "FAIL" and holed["watertight"].faces
+    assert "stability" not in holed
+
+    inside_out = _block((20, 20, 20))
+    bmesh.ops.reverse_faces(inside_out, faces=inside_out.faces[:])
+    assert _levels(inside_out)["normals"].level == "FAIL"
+    assert print_check.worst(plate.values()) == "FAIL" and print_check.worst(cube.values()) == "OK"
+
+
+@test
+def print_check_reports_thin_shell_and_highlight():
+    import json
+    from parametric_design.ops import printing
+    ctx = bpy.context
+    bpy.ops.param.setup_units()
+    obj = new_object("BOX")
+    bpy.ops.param.add_operation(kind="SHELL")
+    shell = node(obj.param_tree, "PARAM_N_Shell")
+    shell.inputs["Dicke"].default_value = 0.5
+    scheduler.flush()
+    bpy.ops.param.print_check()
+    report = json.loads(ctx.scene["param_print_report"])
+    wall = next(c for c in report["checks"] if c["id"] == "wall")
+    assert wall["level"] == "FAIL" and wall["count"] > 0, wall
+    assert report["verdict"] == "So nicht druckbar", report
+    assert printing.runtime["triangles"]["wall"], "no faces to highlight"
+    bpy.ops.param.print_highlight(check_id="wall")
+    assert printing.runtime["active"] == "wall"
+    bpy.ops.param.print_highlight(check_id="wall")
+    assert printing.runtime["active"] == ""
+    ctx.scene.param_print.preset = "RESIN"
+    approx(ctx.scene.param_print.min_wall, 0.5)
+    bpy.ops.param.print_check()
+    report = json.loads(ctx.scene["param_print_report"])
+    assert next(c for c in report["checks"] if c["id"] == "wall")["level"] == "OK", report
+    ctx.scene.param_print.preset = "FDM"
+
+
+@test
+def parameter_range_and_lock():
+    bpy.ops.param.setup_units()
+    obj = new_object("BOX")
+    tree = obj.param_tree
+    bpy.ops.param.add_parameter(unit="LENGTH")
+    p = tree.nodes.active
+    p.value = 5
+    p.use_min, p.min_value = True, 2
+    p.use_max, p.max_value = True, 30
+    p.value = 1
+    approx(p.value, 2)
+    assert "Minimum" in tree.param_notice, tree.param_notice
+    p.value = 50
+    approx(p.value, 30)
+    p.value = 12
+    assert tree.param_notice == ""
+    p.min_value = 15  # raising the limit pulls the value along
+    approx(p.value, 15)
+    p.use_min = False
+    p.profile_min = "WALL"
+    p.value = 0.1
+    approx(p.value, 0.8)
+    p.profile_min = "NONE"
+    p.value = 7
+    p.locked = True
+    p.value = 9
+    approx(p.value, 7)
+    assert "gesperrt" in tree.param_notice
+    p.locked = False
+    p.value = 9
+    approx(p.value, 9)
+
+
+@test
+def proportion_lock_keeps_ratio_and_difference():
+    from parametric_design.ops import proportion
+    obj = new_object("BOX")
+    tree = obj.param_tree
+    box = node(tree, "PARAM_N_Box")
+    for sock, name in (("Breite", "breite"), ("Tiefe", "tiefe"), ("Höhe", "hoehe")):
+        bpy.ops.param.promote_input("EXEC_DEFAULT", tree_name=tree.name, node_name=box.name, socket_name=sock, param_name=name)
+    params = {n.param_name: n for n in tree.nodes if getattr(n, "param_name", "")}
+    b, t, h = params["breite"], params["tiefe"], params["hoehe"]
+    b.value, t.value, h.value = 40, 20, 10
+    b.pick = t.pick = True
+    assert bpy.ops.param.proportion_lock.poll()
+    bpy.ops.param.proportion_lock(kind="RATIO")
+    assert len(tree.param_proportions) == 1 and not b.pick
+    assert proportion.describe(tree, tree.param_proportions[0]) == "breite : tiefe = 2 : 1"
+    b.value = 60
+    approx(t.value, 30)
+    t.value = 10  # any member leads
+    approx(b.value, 20)
+    scheduler.flush()
+    dims = mesh_stats(obj)["dimensions"]
+    approx(dims[0], 20)
+    approx(dims[1], 10)
+    # a member at its limit holds the whole group
+    t.use_min, t.min_value = True, 8
+    b.value = 10
+    approx(b.value, 20)
+    approx(t.value, 10)
+    assert "tiefe" in tree.param_notice and "Minimum" in tree.param_notice, tree.param_notice
+    # one parameter, one group
+    assert isinstance(proportion.lock(tree, [t, h], "DIFFERENCE"), str)
+    bpy.ops.param.proportion_unlock(index=0)
+    assert len(tree.param_proportions) == 0
+    t.use_min = False
+    group = proportion.lock(tree, [t, h], "DIFFERENCE")
+    assert not isinstance(group, str), group
+    h.value = 15
+    approx(t.value, 15)
+    t.value = 3
+    approx(h.value, 3)
+    h.locked = True
+    t.value = 6
+    approx(t.value, 3)
+    assert "gesperrt" in tree.param_notice
+    assert isinstance(proportion.lock(tree, [b], "RATIO"), str)
 
 
 @test

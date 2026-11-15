@@ -1,0 +1,17 @@
+schema_version = "1.0.0"
+
+id = "parametric_design"
+version = "0.1.0"
+name = "Parametric Design"
+tagline = "Parametric modeling with tools and a live node graph, ready for 3D printing"
+maintainer = "Jo <https://github.com/lasjoh-toho>"
+type = "add-on"
+website = "https://github.com/lasjoh-toho/blender-parametric"
+tags = ["Modeling", "Node", "Mesh", "3D View"]
+
+blender_version_min = "4.2.0"
+
+license = ["SPDX:GPL-3.0-or-later"]
+
+[permissions]
+files = "Export models as STL files for 3D printing"

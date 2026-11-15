@@ -52,6 +52,7 @@ Formeln: `+ - * / // % **`, Vergleiche, `a if b else c`, Funktionen `sin cos tan
 2. Punkte in den Viewport setzen. Ein Klick auf den Startpunkt schließt die Kontur, und das Objekt entsteht. `Esc` oder `Enter` beendet eine Form, `Esc` noch einmal das Werkzeug.
 3. Mit **Auswahl** Linien oder Punkte antippen (Umschalt für mehrere) und unter **Constraints** z. B. **Distanz** setzen. In der Liste *Aktive Constraints* den Wert ändern oder im Formelfeld einen Parameter eintragen, etwa `breite / 2`.
 4. Die Statuszeile zeigt, ob die Skizze voll bestimmt ist oder wie viele Freiheitsgrade offen sind.
+5. Unter **Maße vorschlagen** stehen Maße, die noch fehlen (im Viewport grau mit Nummer). Das Driver-Symbol macht daraus einen Parameter, der Haken trägt das Maß fest ein.
 
 Snap: Punkte fangen immer aufeinander. Raster und Horizontal/Vertikal greifen, wenn Snap an ist (Strg kehrt es um). Mit dem Stift: leichter Druck zeichnet frei, fester Druck erzwingt den Snap.
 

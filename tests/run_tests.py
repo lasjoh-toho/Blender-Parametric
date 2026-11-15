@@ -587,6 +587,37 @@ def sketch_repeated_constraint_and_dimension_text():
 
 
 @test
+def sketch_suggestions_lead_to_full_definition():
+    from parametric_design.ops import sketch_ops
+    bpy.ops.object.select_all(action="DESELECT")
+    bpy.context.view_layer.objects.active = None
+    bpy.ops.param.sketch_add(kind="RECT", x1=0, y1=0, x2=40, y2=25)
+    obj = bpy.context.active_object
+    sk = sketch_of(obj)
+    sk.points[0].select = True
+    bpy.ops.param.sketch_fix()
+    found = sketch_ops.suggestions(sk)
+    assert sorted(round(f["value"]) for f in found) == [25, 40], found  # one per direction, not all four sides
+    assert sketch_ops.suggestions(sk) is found, "suggestions are cached while nothing changes"
+    bpy.ops.param.sketch_suggest(index=0, mode="PARAMETER", param_name="breite")
+    bpy.ops.param.sketch_suggest(index=0, mode="MEASURE")
+    assert sk.sketch_status == "Voll bestimmt", sk.sketch_status
+    assert sketch_ops.suggestions(sk) == []
+    tree = obj.param_tree
+    p = next(n for n in tree.nodes if getattr(n, "param_name", "") == "breite")
+    driven = next(c for c in sk.constraints if c.expression == "breite")
+    other = 25 if round(driven.value) == 40 else 40
+    p.value = 60
+    scheduler.flush()
+    dims = sorted(mesh_stats(obj)["dimensions"][:2])
+    approx(dims[0], min(other, 60))
+    approx(dims[1], max(other, 60))
+    bpy.ops.param.sketch_add(kind="CIRCLE", x1=10, y1=10, x2=13, y2=10)
+    found = sketch_ops.suggestions(sk)
+    assert any(f["kind"] == "RADIUS" for f in found), found
+
+
+@test
 def sketch_hole_and_conflict():
     bpy.ops.object.select_all(action="DESELECT")
     bpy.context.view_layer.objects.active = None

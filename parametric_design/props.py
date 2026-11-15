@@ -27,6 +27,11 @@ class PARAM_PG_scene(bpy.types.PropertyGroup):
         description="Skizze des aktiven Objekts mit Maßen im 3D-Viewport anzeigen",
         default=True,
     )
+    show_suggestions: BoolProperty(
+        name="Maße vorschlagen",
+        description="Maße zeigen, die sich als Parameter eignen: jedes schließt einen offenen Freiheitsgrad der Skizze",
+        default=True,
+    )
     sketch_grid: FloatProperty(
         name="Raster",
         description="Rasterweite, auf die Skizzenpunkte bei aktivem Snap einrasten (0 = aus)",

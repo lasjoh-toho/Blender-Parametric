@@ -6,7 +6,7 @@ from ..core.evaluator import TREE_ID
 from ..nodes import sketch as sketch_nodes
 from ..nodes import nodes as node_types
 from ..ops import graph, printing, proportion, sketch_ops
-from . import icons
+from . import icons, overlay
 
 CATEGORY = "Parametric"
 COLUMNS = 4
@@ -285,6 +285,21 @@ class PARAM_PT_constraints(_ViewPanel, bpy.types.Panel):
             con("HORIZONTAL", "Horiz."), con("VERTICAL", "Vertikal"), con("COINCIDENT", "Deckung"), con("MIDPOINT", "Mitte"),
             con("RADIUS", "Radius"),
         ])
+        settings = context.scene.param_settings
+        layout.prop(settings, "show_suggestions", icon_value=icons.get("con_distance"))
+        if settings.show_suggestions:
+            found = sketch_ops.suggestions(node)
+            col = layout.column(align=True)
+            for index, item in enumerate(found):
+                row = col.row(align=True)
+                prefix = "R " if item["kind"] == "RADIUS" else ""
+                row.label(text=f"{index + 1}  {item['label']}  {prefix}{overlay.length_text(context.scene, item['value'])}")
+                op = row.operator("param.sketch_suggest", text="", icon="DRIVER")
+                op.index, op.mode = index, "PARAMETER"
+                op = row.operator("param.sketch_suggest", text="", icon="CHECKMARK")
+                op.index, op.mode = index, "MEASURE"
+            if not found and node.points:
+                col.label(text="Keine offenen Maße" if node.sketch_dof == 0 else "Keine Vorschläge", icon="INFO")
         if not node.constraints:
             return
         layout.label(text="Aktive Constraints")

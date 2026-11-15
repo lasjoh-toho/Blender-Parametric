@@ -32,6 +32,7 @@ CONSTRAINT_ITEMS = [
 CONSTRAINT_LABELS = {i[0]: i[1] for i in CONSTRAINT_ITEMS}
 
 # Runtime-only state, keyed by (tree name, node name): point index -> target while dragging.
+_suggestion_cache = {}  # (tree name, node name) -> (signature, suggestions)
 drag_targets = {}
 
 
@@ -273,6 +274,83 @@ class PARAM_N_Sketch(ParamNode, bpy.types.Node):
         if self.sketch_dof != result.dof:
             self.sketch_dof = result.dof
         return result
+
+    # -- suggestions ----------------------------------------------------------
+    def _signature(self):
+        return (
+            tuple((round(p.x, 6), round(p.y, 6), p.fixed) for p in self.points),
+            tuple((l.a, l.b, l.construction) for l in self.lines),
+            tuple((c.center, round(c.radius, 6)) for c in self.circles),
+            tuple((a.center, a.start, a.end) for a in self.arcs),
+            tuple((c.kind, c.point_refs(), c.curve_kind, c.curve, round(c.value, 6), c.expression) for c in self.constraints),
+        )
+
+    def suggestions(self, names=None, limit=6):
+        """Dimensions that would make good parameters, best first.
+
+        Only dimensions that close an open degree of freedom are offered, and each
+        one is tested on top of the ones before it, so taking all of them leads
+        to a fully defined sketch. Returns dicts with kind, points, curve, value, label.
+        """
+        key = self._runtime_key()
+        signature = (self._signature(), limit)
+        cached = _suggestion_cache.get(key)
+        if cached is not None and cached[0] == signature:
+            return cached[1]
+        result = self._find_suggestions(names or {}, limit)
+        _suggestion_cache[key] = (signature, result)
+        return result
+
+    def _find_suggestions(self, names, limit):
+        P = self.points
+        points = [(p.x, p.y) for p in P]
+        fixed = {i for i, p in enumerate(P) if p.fixed}
+        circles = [(c.center, c.radius) for c in self.circles]
+        arcs = [(a.center, a.start, a.end) for a in self.arcs]
+        try:
+            constraints = self.solver_constraints(names)
+        except Exception:
+            return []
+        base = sketch_solver.solve(points, constraints, fixed, circles, arcs)
+        if base.status == "CONFLICT" or base.dof == 0:
+            return []
+        measured = {frozenset(c.point_refs()) for c in self.constraints if c.kind == "DISTANCE"}
+        with_radius = {(c.curve_kind, c.curve) for c in self.constraints if c.kind == "RADIUS"}
+        candidates = []
+        for index, line in enumerate(self.lines):
+            if line.construction or frozenset((line.a, line.b)) in measured:
+                continue
+            value = math.hypot(P[line.a].x - P[line.b].x, P[line.a].y - P[line.b].y)
+            if value > 1e-6:
+                candidates.append({"kind": "DISTANCE", "points": (line.a, line.b), "curve": None, "value": value,
+                                   "label": f"Linie {index + 1}"})
+        for index, circle in enumerate(self.circles):
+            if ("CIRCLE", index) not in with_radius:
+                candidates.append({"kind": "RADIUS", "points": (), "curve": ("CIRCLE", index), "value": circle.radius,
+                                   "label": f"Kreis {index + 1}"})
+        for index, arc in enumerate(self.arcs):
+            if ("ARC", index) not in with_radius:
+                value = math.hypot(P[arc.start].x - P[arc.center].x, P[arc.start].y - P[arc.center].y)
+                candidates.append({"kind": "RADIUS", "points": (), "curve": ("ARC", index), "value": value,
+                                   "label": f"Bogen {index + 1}"})
+
+        def roundness(candidate):
+            value = candidate["value"]
+            return (abs(value - round(value)) > 1e-4, abs(value * 2 - round(value * 2)) > 1e-4, -value)
+
+        candidates.sort(key=roundness)
+        chosen = []
+        dof = base.dof
+        for candidate in candidates[:40]:
+            if dof == 0 or len(chosen) >= limit:
+                break
+            extra = sketch_solver.Constraint(candidate["kind"], candidate["points"], candidate["curve"], candidate["value"])
+            trial = sketch_solver.solve(points, constraints + [extra], fixed, circles, arcs)
+            if trial.status != "CONFLICT" and trial.dof < dof:
+                constraints = constraints + [extra]
+                dof = trial.dof
+                chosen.append(candidate)
+        return chosen
 
     def arc_points(self, arc, segments):
         c = self.points[arc.center]

@@ -8,6 +8,8 @@
 - Druckprofil der Szene mit Vorgaben für FDM und Harz
 - Druckprüfung als Ampel: wasserdicht, Flächenrichtung, Bauraum, Wandstärke, Überhang, Standfestigkeit, Schlankheit
 - Betroffene Flächen lassen sich im Viewport einfärben
+- Maßvorschläge in der Skizze: Maße, die einen offenen Freiheitsgrad schließen, mit einem Tipp als Parameter oder festes Maß übernehmen
+- Skizze im Viewport: Konturlinien kräftiger mit dunklem Rand, Hilfslinien dünn und gestrichelt
 
 ## 0.2.0
 

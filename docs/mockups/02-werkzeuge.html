@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup 2 – Werkzeug-Übersicht</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3/dist/tabler-icons.min.css">
+<link rel="stylesheet" href="base.css">
+<style>
+.panel { border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); overflow: hidden; }
+.panel-header { padding: 9px 14px; background: var(--color-background-secondary); border-bottom: 0.5px solid var(--color-border-tertiary); font-size: 12px; font-weight: 500; color: var(--color-text-secondary); display: flex; align-items: center; gap: 6px; }
+.panel-header i { font-size: 14px; }
+.panel-body { padding: 12px; }
+.cat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.cat-label { font-size: 11px; font-weight: 500; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; padding-bottom: 4px; border-bottom: 0.5px solid var(--color-border-tertiary); }
+.tool-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; }
+.tool-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 6px 3px; border-radius: 6px; border: 0.5px solid var(--color-border-tertiary); background: var(--color-background-primary); font-size: 9.5px; color: var(--color-text-secondary); text-align: center; line-height: 1.2; }
+.tool-btn i { font-size: 15px; }
+.tool-btn.new { border-color: #1D9E75; color: #085041; background: #E1F5EE; }
+.note { font-size: 11px; color: var(--color-text-secondary); margin-top: 14px; padding: 8px 10px; background: var(--color-background-secondary); border-left: 2px solid #1D9E75; line-height: 1.6; }
+.note strong { color: var(--color-text-primary); font-weight: 500; }
+.tag-new { font-size: 9px; background: #E1F5EE; color: #085041; border-radius: 3px; padding: 0 3px; vertical-align: middle; margin-left: 4px; }
+.key { display: inline-block; width: 10px; height: 10px; border-radius: 3px; background: #E1F5EE; border: 0.5px solid #1D9E75; margin-left: 6px; }
+</style>
+</head>
+<body>
+
+<h1>Mockup 2 – Werkzeug-Übersicht</h1>
+<p class="lead">Alle Werkzeugkategorien der Toolbox. Grün markiert: in der zweiten Runde ergänzt (Modifier, Duplicate &amp; Array, Sync).</p>
+
+<div class="panel">
+  <div class="panel-header"><i class="ti ti-tools"></i> Vollständige Werkzeug-Übersicht <span class="key"></span> <span style="font-size:11px;color:#085041;">neu ergänzt</span></div>
+  <div class="panel-body">
+    <div class="cat-grid">
+
+      <div class="cat">
+        <div class="cat-label">Grundkörper</div>
+        <div class="tool-grid">
+          <div class="tool-btn"><i class="ti ti-box"></i>Box</div>
+          <div class="tool-btn"><i class="ti ti-cylinder"></i>Zylinder</div>
+          <div class="tool-btn"><i class="ti ti-circle"></i>Kugel</div>
+          <div class="tool-btn"><i class="ti ti-triangle"></i>Kegel</div>
+        </div>
+      </div>
+
+      <div class="cat">
+        <div class="cat-label">Kurven &amp; Skizze</div>
+        <div class="tool-grid">
+          <div class="tool-btn"><i class="ti ti-line"></i>Linie</div>
+          <div class="tool-btn"><i class="ti ti-circle-dotted"></i>Bogen</div>
+          <div class="tool-btn"><i class="ti ti-wave-sine"></i>Spline</div>
+          <div class="tool-btn"><i class="ti ti-hexagon"></i>Polygon</div>
+        </div>
+      </div>
+
+      <div class="cat">
+        <div class="cat-label">Operationen</div>
+        <div class="tool-grid">
+          <div class="tool-btn"><i class="ti ti-arrow-bar-up"></i>Extrude</div>
+          <div class="tool-btn"><i class="ti ti-rotate-clockwise"></i>Revolve</div>
+          <div class="tool-btn"><i class="ti ti-circle-plus"></i>Union</div>
+          <div class="tool-btn"><i class="ti ti-circle-minus"></i>Subtract</div>
+          <div class="tool-btn"><i class="ti ti-corner-up-right"></i>Chamfer</div>
+          <div class="tool-btn"><i class="ti ti-radius-bottom-left"></i>Fillet</div>
+          <div class="tool-btn"><i class="ti ti-border-outer"></i>Shell</div>
+          <div class="tool-btn"><i class="ti ti-flip-horizontal"></i>Mirror</div>
+        </div>
+      </div>
+
+      <div class="cat">
+        <div class="cat-label">Modifier <span class="tag-new">erweitert</span></div>
+        <div class="tool-grid">
+          <div class="tool-btn new"><i class="ti ti-arrows-move"></i>Verschieben</div>
+          <div class="tool-btn new"><i class="ti ti-rotate-2"></i>Rotieren</div>
+          <div class="tool-btn new"><i class="ti ti-arrows-maximize"></i>Skalieren</div>
+          <div class="tool-btn new"><i class="ti ti-border-corner-rounded"></i>Bevel</div>
+          <div class="tool-btn new"><i class="ti ti-wave-sine"></i>Soften</div>
+          <div class="tool-btn new"><i class="ti ti-layers-difference"></i>Solidify</div>
+          <div class="tool-btn"><i class="ti ti-border-outer"></i>Shell</div>
+          <div class="tool-btn"><i class="ti ti-flip-horizontal"></i>Mirror</div>
+        </div>
+      </div>
+
+      <div class="cat">
+        <div class="cat-label">Duplicate &amp; Array <span class="tag-new">neu</span></div>
+        <div class="tool-grid">
+          <div class="tool-btn new"><i class="ti ti-copy"></i>Duplicate</div>
+          <div class="tool-btn new"><i class="ti ti-layout-grid"></i>Array lin.</div>
+          <div class="tool-btn new"><i class="ti ti-circle-dotted"></i>Array rad.</div>
+          <div class="tool-btn new"><i class="ti ti-route"></i>Array Pfad</div>
+          <div class="tool-btn new"><i class="ti ti-grain"></i>Scatter</div>
+          <div class="tool-btn new"><i class="ti ti-hierarchy"></i>Instance</div>
+        </div>
+      </div>
+
+      <div class="cat">
+        <div class="cat-label">Constraints</div>
+        <div class="tool-grid">
+          <div class="tool-btn"><i class="ti ti-ruler"></i>Distanz</div>
+          <div class="tool-btn"><i class="ti ti-angle"></i>Winkel</div>
+          <div class="tool-btn"><i class="ti ti-arrows-join"></i>Tangent</div>
+          <div class="tool-btn"><i class="ti ti-separator"></i>Parallel</div>
+          <div class="tool-btn"><i class="ti ti-arrows-right-left"></i>Senk.</div>
+          <div class="tool-btn"><i class="ti ti-equal"></i>Gleich</div>
+          <div class="tool-btn"><i class="ti ti-lock"></i>Fix</div>
+          <div class="tool-btn"><i class="ti ti-minus"></i>Kolinear</div>
+        </div>
+      </div>
+
+      <div class="cat">
+        <div class="cat-label">Sync &amp; Status <span class="tag-new">neu</span></div>
+        <div class="tool-grid">
+          <div class="tool-btn new"><i class="ti ti-refresh"></i>Sync</div>
+          <div class="tool-btn new"><i class="ti ti-unlink"></i>Sync aufheben</div>
+          <div class="tool-btn new"><i class="ti ti-link"></i>Re-link</div>
+          <div class="tool-btn new"><i class="ti ti-database-export"></i>Bake</div>
+          <div class="tool-btn new"><i class="ti ti-history"></i>History</div>
+          <div class="tool-btn new"><i class="ti ti-alert-triangle"></i>Dirty</div>
+        </div>
+      </div>
+
+      <div class="cat">
+        <div class="cat-label">Parameter</div>
+        <div class="tool-grid">
+          <div class="tool-btn"><i class="ti ti-adjustments-horizontal"></i>Driver</div>
+          <div class="tool-btn"><i class="ti ti-math-function"></i>Formel</div>
+          <div class="tool-btn"><i class="ti ti-table"></i>Tabelle</div>
+          <div class="tool-btn"><i class="ti ti-link"></i>Link</div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="note">
+      <strong>Sync / Sync aufheben:</strong> Jedes Objekt ist standardmäßig live mit seinem Node-Graph verbunden. „Sync aufheben“ friert das Mesh ein – Änderungen im Graph wirken sich nicht mehr aus (nützlich für Export oder manuelle Nachbearbeitung). „Re-link“ stellt die Verbindung wieder her, „Bake“ löst den Graph dauerhaft auf und hinterlässt ein reines Blender-Mesh. „Dirty“ zeigt, welche Nodes veraltet sind und neu berechnet werden müssen.<br><br>
+      <strong>Duplicate vs. Instance:</strong> Duplicate erzeugt einen eigenen Node-Graph (unabhängig editierbar). Instance ist eine leichte Referenzkopie – teilt denselben Graph, nur der Transform ist individuell. Änderungen am Original-Graph wirken auf alle Instances.<br><br>
+      <strong>Modifier:</strong> Verschieben, Rotieren, Skalieren, Bevel (Breite und Segmente als Eingänge) und Soften (Subdivision-Stufe) sind nicht destruktive Nodes.
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

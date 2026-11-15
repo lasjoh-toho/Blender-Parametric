@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup 3 – Snap, Group, Stift</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3/dist/tabler-icons.min.css">
+<link rel="stylesheet" href="base.css">
+<style>
+.section-title { font-size: 12px; font-weight: 500; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; padding-bottom: 5px; border-bottom: 0.5px solid var(--color-border-tertiary); }
+.panel { border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); overflow: hidden; margin-bottom: 1rem; }
+.panel-header { padding: 8px 12px; background: var(--color-background-secondary); border-bottom: 0.5px solid var(--color-border-tertiary); font-size: 12px; font-weight: 500; color: var(--color-text-secondary); display: flex; align-items: center; gap: 6px; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+.tb { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 8px 4px; border-radius: 7px; border: 0.5px solid var(--color-border-tertiary); background: var(--color-background-primary); font-size: 10px; color: var(--color-text-secondary); text-align: center; line-height: 1.2; }
+.tb i { font-size: 16px; }
+.tb.active { background: #E1F5EE; border-color: #1D9E75; color: #085041; }
+.tb.snap-on { background: #EEEDFE; border-color: #534AB7; color: #3C3489; }
+.tb.snap-on i { color: #534AB7; }
+.tb.quick { flex: 0 0 44px; width: 44px; height: 44px; border-radius: 8px; padding: 0; }
+.sep { width: 0.5px; height: 32px; background: var(--color-border-secondary); margin: 0 2px; }
+
+.grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+
+.snap-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 5px; font-size: 10px; font-weight: 500; border: 0.5px solid; }
+.snap-geo  { background: #EEEDFE; color: #3C3489; border-color: #AFA9EC; }
+.snap-grid { background: #E1F5EE; color: #085041; border-color: #5DCAA5; }
+.snap-off  { background: var(--color-background-secondary); color: var(--color-text-tertiary); border-color: var(--color-border-tertiary); }
+
+.group-card { border: 0.5px solid var(--color-border-tertiary); border-radius: 8px; padding: 8px 10px; background: var(--color-background-primary); }
+.group-header { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; font-size: 12px; font-weight: 500; }
+.group-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+.group-members { display: flex; flex-wrap: wrap; gap: 3px; }
+.group-pill { font-size: 10px; padding: 2px 7px; border-radius: 4px; border: 0.5px solid var(--color-border-tertiary); background: var(--color-background-secondary); color: var(--color-text-secondary); }
+.group-actions { display: flex; gap: 4px; margin-top: 7px; }
+.group-action { font-size: 10px; padding: 3px 7px; border-radius: 5px; border: 0.5px solid var(--color-border-tertiary); background: var(--color-background-primary); color: var(--color-text-secondary); display: flex; align-items: center; gap: 3px; }
+.group-action i { font-size: 11px; }
+
+.radial-wrap { position: relative; width: 200px; height: 200px; flex-shrink: 0; }
+.radial-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 36px; height: 36px; border-radius: 50%; background: var(--color-background-primary); border: 1.5px solid var(--color-border-secondary); display: flex; align-items: center; justify-content: center; font-size: 14px; color: var(--color-text-secondary); }
+.r-btn { position: absolute; width: 48px; height: 48px; border-radius: 50%; border: 0.5px solid var(--color-border-secondary); background: var(--color-background-primary); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; font-size: 9px; color: var(--color-text-secondary); text-align: center; line-height: 1.1; transform: translate(-50%, -50%); }
+.r-btn i { font-size: 15px; }
+.r-btn.highlight { background: #EEEDFE; border-color: #534AB7; color: #3C3489; }
+.r-btn.highlight i { color: #534AB7; }
+
+.pressure-bar { height: 6px; border-radius: 3px; background: var(--color-border-tertiary); overflow: hidden; }
+.pressure-fill { height: 100%; border-radius: 3px; background: #7F77DD; width: 65%; }
+
+.barrel-strip { display: flex; gap: 5px; }
+.barrel-btn { flex: 1; padding: 7px 4px; border-radius: 6px; border: 0.5px solid var(--color-border-tertiary); background: var(--color-background-primary); font-size: 10px; color: var(--color-text-secondary); text-align: center; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.barrel-btn i { font-size: 14px; }
+.barrel-btn .blabel { font-size: 9px; color: var(--color-text-tertiary); }
+
+.hint { font-size: 11px; color: var(--color-text-secondary); padding: 6px 10px; background: var(--color-background-secondary); border-radius: 6px; margin-top: 6px; line-height: 1.5; }
+.hint strong { font-weight: 500; color: var(--color-text-primary); }
+</style>
+</head>
+<body>
+
+<h1>Mockup 3 – Snap, Group und Stift-Bedienung</h1>
+<p class="lead">Fang-Ziele und -Modi, Gruppen mit eigenem Untergraph, Radialmenü und Schnellzugriff für Stift und Finger.</p>
+
+<div class="two-col" style="margin-bottom:1rem;">
+
+  <div class="panel" style="margin-bottom:0;">
+    <div class="panel-header"><i class="ti ti-magnet"></i> Snap</div>
+    <div style="padding:10px;">
+      <div class="section-title">Snap-Targets</div>
+      <div class="grid4" style="margin-bottom:10px;">
+        <div class="tb snap-on"><i class="ti ti-point"></i>Vertex</div>
+        <div class="tb snap-on"><i class="ti ti-minus"></i>Kante</div>
+        <div class="tb snap-on"><i class="ti ti-square"></i>Fläche</div>
+        <div class="tb snap-on"><i class="ti ti-circle"></i>Mittelpunkt</div>
+        <div class="tb snap-on"><i class="ti ti-crosshair"></i>Ursprung</div>
+        <div class="tb snap-on"><i class="ti ti-grid-4x4"></i>Raster</div>
+        <div class="tb"><i class="ti ti-angle"></i>Winkel</div>
+        <div class="tb"><i class="ti ti-ruler-measure"></i>Inkrement</div>
+      </div>
+
+      <div class="section-title">Snap-Modus</div>
+      <div class="grid3" style="margin-bottom:10px;">
+        <div class="tb snap-on"><i class="ti ti-magnet"></i>Nächster</div>
+        <div class="tb"><i class="ti ti-arrows-join-2"></i>Projektion</div>
+        <div class="tb"><i class="ti ti-stack-2"></i>Oberfläche</div>
+      </div>
+
+      <div class="section-title">Snap-Status (live im Viewport)</div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px;">
+        <span class="snap-badge snap-geo"><i class="ti ti-point"></i> Vertex aktiv</span>
+        <span class="snap-badge snap-grid"><i class="ti ti-grid-4x4"></i> Raster 1 mm</span>
+        <span class="snap-badge snap-off">Winkel-Snap aus</span>
+      </div>
+
+      <div class="hint"><strong>Stift:</strong> Überschreitet der Druck eine Schwelle, greift der Snap automatisch. Leichter Druck = freies Zeichnen, voller Druck = Snap.</div>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-bottom:0;">
+    <div class="panel-header"><i class="ti ti-object-scan"></i> Group</div>
+    <div style="padding:10px;">
+      <div class="section-title">Gruppen-Werkzeuge</div>
+      <div class="grid4" style="margin-bottom:10px;">
+        <div class="tb active"><i class="ti ti-object-scan"></i>Gruppe</div>
+        <div class="tb"><i class="ti ti-arrows-split-2"></i>Auflösen</div>
+        <div class="tb"><i class="ti ti-pencil"></i>In-Place Edit</div>
+        <div class="tb"><i class="ti ti-hierarchy-3"></i>Untergruppe</div>
+        <div class="tb"><i class="ti ti-lock"></i>Sperren</div>
+        <div class="tb"><i class="ti ti-eye-off"></i>Verstecken</div>
+        <div class="tb"><i class="ti ti-replace"></i>Ersetzen</div>
+        <div class="tb"><i class="ti ti-hierarchy"></i>Als Instance</div>
+      </div>
+
+      <div class="section-title">Aktive Gruppen</div>
+      <div style="display:flex;flex-direction:column;gap:5px;">
+
+        <div class="group-card">
+          <div class="group-header">
+            <div class="group-dot" style="background:#7F77DD;"></div>
+            Gruppe A – Gehäuse
+            <span style="margin-left:auto;font-size:10px;font-weight:400;color:var(--color-text-tertiary);">3 Obj.</span>
+          </div>
+          <div class="group-members">
+            <span class="group-pill">Box-Skizze</span>
+            <span class="group-pill">Extrude</span>
+            <span class="group-pill">Fillet</span>
+          </div>
+          <div class="group-actions">
+            <div class="group-action"><i class="ti ti-pencil"></i>Edit</div>
+            <div class="group-action"><i class="ti ti-lock"></i>Lock</div>
+            <div class="group-action"><i class="ti ti-copy"></i>Dup.</div>
+          </div>
+        </div>
+
+        <div class="group-card">
+          <div class="group-header">
+            <div class="group-dot" style="background:#1D9E75;"></div>
+            Gruppe B – Schrauben (×4)
+            <span style="margin-left:auto;font-size:10px;font-weight:400;color:var(--color-text-tertiary);">Instance</span>
+          </div>
+          <div class="group-members">
+            <span class="group-pill">Zylinder</span>
+            <span class="group-pill">Array rad.</span>
+          </div>
+          <div class="group-actions">
+            <div class="group-action"><i class="ti ti-pencil"></i>Edit</div>
+            <div class="group-action"><i class="ti ti-unlink"></i>Sync aufheben</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="panel">
+  <div class="panel-header"><i class="ti ti-pencil"></i> Stift-Bedienkonzept und schneller Werkzeugzugriff</div>
+  <div style="padding:10px;">
+    <div class="section-title">Schnellzugriff-Leiste (oben im Viewport)</div>
+        <div style="background:var(--color-background-secondary);border-radius:8px;padding:8px;margin-bottom:10px;">
+          <div style="display:flex;gap:6px;align-items:center;">
+            <div class="tb quick active"><i class="ti ti-box"></i></div>
+            <div class="tb quick"><i class="ti ti-circle"></i></div>
+            <div class="tb quick"><i class="ti ti-line"></i></div>
+            <div class="sep"></div>
+            <div class="tb quick snap-on"><i class="ti ti-magnet"></i></div>
+            <div class="tb quick"><i class="ti ti-grid-4x4"></i></div>
+            <div class="sep"></div>
+            <div class="tb quick"><i class="ti ti-object-scan"></i></div>
+            <div class="tb quick"><i class="ti ti-copy"></i></div>
+            <div class="tb quick"><i class="ti ti-layout-grid"></i></div>
+            <div class="sep"></div>
+            <div class="tb quick"><i class="ti ti-refresh"></i></div>
+            <div class="tb quick"><i class="ti ti-unlink"></i></div>
+          </div>
+          <div style="font-size:10px;color:var(--color-text-tertiary);margin-top:6px;">Buttons 44×44 px – stift- und fingerfreundlich. Aktives Werkzeug hervorgehoben. Reihenfolge: Box, Kugel, Linie · Snap, Raster · Gruppe, Duplikat, Array · Sync, Sync aufheben.</div>
+        </div>
+    <div class="two-col">
+      <div>
+        <div class="section-title">Radialmenü (Halten oder Barrel 1+2)</div>
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:10px;">
+          <div class="radial-wrap">
+            <div class="radial-center"><i class="ti ti-pencil"></i></div>
+            <div class="r-btn highlight" style="top:12%;left:50%;"><i class="ti ti-box"></i>Box</div>
+            <div class="r-btn" style="top:23%;left:77%;"><i class="ti ti-magnet"></i>Snap</div>
+            <div class="r-btn highlight" style="top:50%;left:88%;"><i class="ti ti-object-scan"></i>Gruppe</div>
+            <div class="r-btn" style="top:77%;left:77%;"><i class="ti ti-copy"></i>Duplikat</div>
+            <div class="r-btn" style="top:88%;left:50%;"><i class="ti ti-refresh"></i>Sync</div>
+            <div class="r-btn" style="top:77%;left:23%;"><i class="ti ti-arrows-move"></i>Move</div>
+            <div class="r-btn highlight" style="top:50%;left:12%;"><i class="ti ti-unlink"></i>Sync auf.</div>
+            <div class="r-btn" style="top:23%;left:23%;"><i class="ti ti-arrow-back-up"></i>Undo</div>
+          </div>
+          <div style="flex:1;">
+            <div class="hint" style="margin-top:0;"><strong>Tippen</strong> = Objekt platzieren / auswählen</div>
+            <div class="hint"><strong>Halten (0,4 s)</strong> = Radialmenü öffnet sich an der Stiftspitze</div>
+            <div class="hint"><strong>Ziehen ohne Abheben</strong> = Objekt bewegen / Constraint setzen</div>
+            <div class="hint"><strong>Doppeltippen</strong> = Wert direkt editieren (Popup mit Numpad)</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="section-title">Druckempfindlichkeit</div>
+        <div style="margin-bottom:6px;">
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--color-text-tertiary);margin-bottom:3px;">
+            <span>Leicht – freies Zeichnen</span><span>Voll – Snap aktiv</span>
+          </div>
+          <div class="pressure-bar"><div class="pressure-fill"></div></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:8px;">
+          <div class="hint" style="margin-top:0;"><strong>0–30 %</strong> Druck: schwebend, kein Snap, Hilfslinien sichtbar</div>
+          <div class="hint" style="margin-top:0;"><strong>30–70 %</strong> Druck: normales Zeichnen, Snap optional</div>
+          <div class="hint" style="margin-top:0;"><strong>70–100 %</strong> Druck: Snap erzwungen, Constraint gesetzt</div>
+          <div class="hint" style="margin-top:0;"><strong>Radierer-Ende:</strong> löscht das Objekt oder hebt den Sync auf</div>
+        </div>
+        <div style="height:12px;"></div>
+        <div class="section-title">Barrel-Buttons (Stift-Seitentasten)</div>
+        <div class="barrel-strip">
+          <div class="barrel-btn"><i class="ti ti-arrow-back-up"></i><span>Barrel 1</span><span class="blabel">Undo</span></div>
+          <div class="barrel-btn"><i class="ti ti-magnet"></i><span>Barrel 2</span><span class="blabel">Snap an/aus</span></div>
+          <div class="barrel-btn" style="background:var(--color-background-secondary);"><i class="ti ti-dots"></i><span>Barrel 1+2</span><span class="blabel">Radialmenü</span></div>
+          <div class="barrel-btn"><i class="ti ti-eraser"></i><span>Radierer</span><span class="blabel">Löschen / Sync aufheben</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

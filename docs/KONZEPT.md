@@ -6,6 +6,9 @@ Dieses Dokument überarbeitet das ursprüngliche Konzept (Werkzeug-Toolbox, Modi
 Duplicate/Array, Sync, Snap, Group, Stylus-Bedienung) und legt fest, was in die erste
 installierbare Version kommt und was später folgt.
 
+Die Skizzen der Oberfläche aus dem ursprünglichen Konzept liegen unter
+[mockups/](mockups/README.md) (Arbeitsbereich, Werkzeug-Übersicht, Snap/Group/Stift).
+
 ## 1. Ziel
 
 Ein Blender-Plugin, mit dem man Objekte **parametrisch modelliert und für den 3D-Druck

@@ -404,7 +404,8 @@ class PARAM_PT_print(_ViewPanel, bpy.types.Panel):
         row.label(text=report["verdict"], icon=LEVEL_ICONS[report["level"]])
         if obj is None or obj.name != report["object"]:
             box.label(text=f"gilt für {report['object']}", icon="INFO")
-        box.label(text=f"{report['size']} · {report['volume']} · {report['parts']} Teil(e)")
+        box.label(text=report["size"])
+        box.label(text=f"{report['volume']} · {report['parts']} {'Teil' if report['parts'] == 1 else 'Teile'}")
         active = printing.runtime["active"] if printing.runtime["object"] == report["object"] else ""
         for item in report["checks"]:
             col = box.column(align=True)

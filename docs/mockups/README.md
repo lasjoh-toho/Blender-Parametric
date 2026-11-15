@@ -39,13 +39,14 @@ Quelle: [03-snap-group-stift.html](03-snap-group-stift.html)
 - **Radialmenü** mit acht Einträgen: Box, Snap, Gruppe, Duplikat, Sync, Move, Sync aufheben, Undo.
 - **Stift:** Gesten (Tippen, Halten, Ziehen, Doppeltippen), Belegung der Seitentasten und des Radierers, Druckstufen für den Snap (0–30 % frei, 30–70 % optional, 70–100 % erzwungen).
 
-## Abweichungen zum Stand 0.1
+## Abweichungen zum Stand 0.2
 
-| Mockup | Stand in KONZEPT.md |
+| Mockup | Stand |
 |---|---|
-| Geometrische Constraints (Tangent, Parallel, …) und freie Skizze (Linie, Bogen, Spline) | geplant für 0.2 |
-| Druckabhängiger Snap, Gesten an der Stiftspitze | geplant für 0.2, braucht das Skizzen-Werkzeug |
+| Geometrische Constraints, freie Skizze (Linie, Bogen), druckabhängiger Snap | umgesetzt in 0.2 |
+| Schnellzugriff-Leiste, Radialmenü-Belegung | umgesetzt in 0.2 |
+| Spline, Chamfer/Fillet einzelner Kanten, Radierer-Ende, Halten öffnet Radialmenü | geplant für 0.3 |
 | Array entlang Pfad, Scatter, Tabellen-Parameter | geplant für 0.3 bzw. später |
 | Gruppen sperren/verstecken, Untergruppe, Ersetzen | später, bis dahin über Collections |
-| Radialmenü: Box, Snap, Gruppe, Duplikat, Sync, Move, Sync aufheben, Undo | 0.1 belegt: Box, Zylinder, Extrudieren, Bevel, Array, Boolean-Differenz, Snap, Sync |
-| Schnellzugriff-Leiste im Viewport, Snap-Modus Projektion/Oberfläche, Solidify als eigener Modifier | im Konzept nicht eigens aufgeführt |
+| Icons | eigene zweifarbige Icons statt der Tabler-Icons der Mockups, siehe `docs/icons/overview.png` |
+| Kacheln | Blender zeichnet Icons auf Buttons fest mit 16 px. Die Kachel besteht deshalb aus großem Icon und dem Button mit der Beschriftung direkt darunter |

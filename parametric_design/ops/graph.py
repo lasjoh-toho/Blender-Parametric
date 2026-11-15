@@ -21,6 +21,7 @@ PROFILES = {
     "CIRCLE": ("PARAM_N_Circle", "Kreis"),
     "POLYGON": ("PARAM_N_Polygon", "Polygon"),
     "POLYLINE": ("PARAM_N_Polyline", "Polylinie"),
+    "SKETCH": ("PARAM_N_Sketch", "Skizze"),
 }
 
 OPERATIONS = {

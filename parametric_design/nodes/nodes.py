@@ -706,7 +706,7 @@ classes = (
 CATEGORIES = [
     ("Parameter", ["PARAM_N_LengthParam", "PARAM_N_AngleParam", "PARAM_N_NumberParam", "PARAM_N_Formula", "PARAM_N_Vector", "PARAM_N_ObjectInput"]),
     ("Grundkörper", ["PARAM_N_Box", "PARAM_N_Cylinder", "PARAM_N_Sphere", "PARAM_N_Cone"]),
-    ("Kurven & Skizze", ["PARAM_N_Rectangle", "PARAM_N_Circle", "PARAM_N_Polygon", "PARAM_N_Polyline"]),
+    ("Kurven & Skizze", ["PARAM_N_Rectangle", "PARAM_N_Circle", "PARAM_N_Polygon", "PARAM_N_Polyline", "PARAM_N_Sketch"]),
     ("Operationen", ["PARAM_N_Extrude", "PARAM_N_Revolve", "PARAM_N_Boolean", "PARAM_N_Bevel", "PARAM_N_Shell", "PARAM_N_Mirror", "PARAM_N_Join"]),
     ("Modifier", ["PARAM_N_Transform", "PARAM_N_Smooth", "PARAM_N_LinearArray", "PARAM_N_RadialArray"]),
     ("Struktur", ["PARAM_N_Group", "PARAM_N_Output"]),

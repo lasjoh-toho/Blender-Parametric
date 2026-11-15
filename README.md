@@ -8,11 +8,11 @@ im Seitenpanel oder über einen benannten Parameter –, baut sich das Objekt so
 value and the model rebuilds. Made for 3D printing (mm units, print check, STL export).*
 
 - **Blender:** 4.2 LTS oder neuer (Extension-Format)
-- **Version:** 0.1.0 · [Konzept](docs/KONZEPT.md) · [Änderungen](CHANGELOG.md)
+- **Version:** 0.2.0 · [Konzept](docs/KONZEPT.md) · [Änderungen](CHANGELOG.md)
 
 ## Installation
 
-1. Die Datei `parametric_design-0.1.0.zip` aus den [Releases](https://github.com/lasjoh-toho/blender-parametric/releases) laden.
+1. Die Datei `parametric_design-0.2.0.zip` aus den [Releases](https://github.com/lasjoh-toho/blender-parametric/releases) laden.
 2. In Blender: *Bearbeiten → Einstellungen → Get Extensions → ⌄ (oben rechts) → Install from Disk…* und die ZIP wählen.
 3. Im 3D-Viewport mit `N` das Seitenpanel öffnen, Reiter **Parametric**.
 
@@ -28,12 +28,13 @@ Radialmenü (Stift/Schnellzugriff): **Umschalt+Alt+Q** im 3D-Viewport und Node-E
 Die Taste lässt sich in den Add-on-Einstellungen ändern; Stift-Seitentasten legt man in den
 Tablet-Einstellungen des Systems auf diese Kombination.
 
-## Was drin ist (0.1)
+## Was drin ist (0.2)
 
 | Bereich | Werkzeuge / Nodes |
 |---|---|
 | Grundkörper | Box, Zylinder, Kugel, Kegel |
-| Kurven & Skizze | Rechteck (mit Eckradius), Kreis, Polygon, Polylinie → Extrudieren oder Rotieren |
+| Skizze | Linie, Bogen, Kreis, Rechteck frei im Viewport zeichnen, Punkte ziehen, Hilfslinien; 13 Constraints (Distanz, Winkel, Tangente, Parallel, Senkrecht, Gleich, Fix, Kolinear, Horizontal, Vertikal, Deckungsgleich, Mittelpunkt, Radius) mit Solver |
+| Fertige Profile | Rechteck (mit Eckradius), Kreis, Polygon, Polylinie → Extrudieren oder Rotieren |
 | Operationen | Boolean (Differenz/Vereinigung/Schnitt), Bevel/Fase, Shell, Spiegeln, Zusammenfügen |
 | Modifier | Verschieben/Rotieren/Skalieren, Soften (Subdivision), lineares und radiales Array |
 | Parameter | Länge, Winkel, Zahl, Formel, Vektor, Objekt-Eingang (Link) |
@@ -45,15 +46,26 @@ Tablet-Einstellungen des Systems auf diese Kombination.
 Formeln: `+ - * / // % **`, Vergleiche, `a if b else c`, Funktionen `sin cos tan asin acos atan atan2`
 (in Grad), `sqrt abs min max round floor ceil log exp clamp`, Konstanten `pi e tau`.
 
-Noch nicht enthalten (siehe [Roadmap](docs/KONZEPT.md#8-roadmap)): freie Skizze mit
-geometrischen Constraints, druckabhängiger Snap, Array entlang Pfad, 3MF.
+### Skizzieren
+
+1. In **Kurven & Skizze** auf **Linie** tippen. Ohne aktives parametrisches Objekt entsteht ein neues (`Skizze → Extrudieren → Output`).
+2. Punkte in den Viewport setzen. Ein Klick auf den Startpunkt schließt die Kontur, und das Objekt entsteht. `Esc` oder `Enter` beendet eine Form, `Esc` noch einmal das Werkzeug.
+3. Mit **Auswahl** Linien oder Punkte antippen (Umschalt für mehrere) und unter **Constraints** z. B. **Distanz** setzen. In der Liste *Aktive Constraints* den Wert ändern oder im Formelfeld einen Parameter eintragen, etwa `breite / 2`.
+4. Die Statuszeile zeigt, ob die Skizze voll bestimmt ist oder wie viele Freiheitsgrade offen sind.
+
+Snap: Punkte fangen immer aufeinander. Raster und Horizontal/Vertikal greifen, wenn Snap an ist (Strg kehrt es um). Mit dem Stift: leichter Druck zeichnet frei, fester Druck erzwingt den Snap.
+
+Noch nicht enthalten (siehe [Roadmap](docs/KONZEPT.md#8-roadmap)): Spline, Fillet einzelner Kanten,
+Array entlang Pfad, 3MF.
 
 ## Entwicklung
 
 ```bash
 pip install bpy==5.3.0          # Blender als Python-Modul (Python 3.13)
+python tests/test_solver.py     # Solver-Tests (nur numpy)
 python tests/run_tests.py       # headless Tests
 python scripts/build_extension.py   # ZIP nach dist/
+python scripts/make_icons.py && node scripts/render_icons.js   # Icons neu erzeugen (braucht Playwright)
 ```
 
 Mit einer Blender-Installation geht auch `blender -b --factory-startup --python tests/run_tests.py`.

@@ -1,6 +1,6 @@
 # Parametric Design für Blender – Konzept (überarbeitet)
 
-Stand: 15.11.2026 · Version des Konzepts: 2 · Zielversion des Plugins: 0.1.0
+Stand: 15.11.2026 · Version des Konzepts: 3 · Zielversion des Plugins: 0.2.0
 
 Dieses Dokument überarbeitet das ursprüngliche Konzept (Werkzeug-Toolbox, Modifier,
 Duplicate/Array, Sync, Snap, Group, Stylus-Bedienung) und legt fest, was in die erste
@@ -54,7 +54,7 @@ Operator **„Parametrischer Arbeitsbereich“** teilt den aktuellen 3D-Viewport
 
 ## 4. Werkzeuge
 
-Status: ✅ in 0.1 · 🔜 später geplant
+Status: ✅ umgesetzt (bis 0.2) · 🔜 später geplant
 
 ### 4.1 Grundkörper
 - ✅ Box (Breite, Tiefe, Höhe)
@@ -67,8 +67,8 @@ Status: ✅ in 0.1 · 🔜 später geplant
 - ✅ Kreis-Profil (Radius, Segmente)
 - ✅ Polygon-Profil (Radius, Ecken)
 - ✅ Polylinie (Punktliste `x,y; x,y; …`, Werte können Parameter-Namen und Formeln enthalten)
-- 🔜 Freie Skizze im Viewport: Linie, Bogen/Radius, Spline mit Fang und Stiftdruck
-- 🔜 Geometrische Constraints auf der Skizze (siehe 4.5)
+- ✅ Freie Skizze im Viewport (0.2): Linie, Bogen, Kreis, Rechteck, Auswahl und Ziehen von Punkten, Hilfslinien, Fang auf Punkte/Raster/Achsen, Stiftdruck
+- ✅ Geometrische Constraints auf der Skizze (0.2, siehe 4.5) · 🔜 Spline
 
 ### 4.3 Operationen
 - ✅ Extrudieren (Profil → Körper, Höhe)
@@ -92,11 +92,13 @@ In 0.1 werden **Maß-Constraints** über Parameter umgesetzt: jede Länge, jeder
 jeder Radius ist ein Node-Eingang und kann an einen benannten Parameter oder eine Formel
 gebunden werden (z. B. `Höhe = Breite / 2`).
 
-🔜 **Geometrische Constraints** (Distanz, Winkel, Tangente, Parallel, Senkrecht, Gleich,
-Fix, Kolinear) brauchen einen Constraint-Solver für Skizzen. Geplant für 0.2: eigener
-numerischer Solver (Gauß-Newton mit `mathutils`/`numpy`) oder Anbindung an den Solver von
-CAD Sketcher. Das ist der größte offene Baustein und bewusst aus 0.1 herausgenommen, damit
-die erste Version stabil installierbar ist.
+✅ **Geometrische Constraints** (0.2): Distanz, Winkel, Tangente, Parallel, Senkrecht, Gleich,
+Fix, Kolinear, dazu Horizontal, Vertikal, Deckungsgleich, Mittelpunkt, Radius und Punkt auf Kurve.
+Ein eigener numerischer Solver (Levenberg-Marquardt mit `numpy`, das Blender mitbringt) löst die
+Skizze bei jeder Änderung und meldet, ob sie voll bestimmt ist, wie viele Freiheitsgrade offen
+sind oder ob sich Constraints widersprechen. Maß-Constraints (Distanz, Winkel, Radius) nehmen
+statt einer Zahl auch einen Parameter-Namen oder eine Formel an; so steuert der Node-Graph die
+Skizze. Die Liste „Aktive Constraints“ im Panel zeigt jeden Constraint mit Wert bzw. Formel.
 
 ### 4.6 Parameter
 - ✅ Parameter-Node (Name, Wert, Einheit Länge/Winkel/Zahl), sichtbar im Seitenpanel
@@ -127,11 +129,15 @@ Blender hat bereits ein vollständiges Fangsystem. Das Plugin erfindet es nicht 
 macht es schnell erreichbar:
 - ✅ Snap an/aus und Snap-Ziele (Vertex, Kante, Kantenmitte, Fläche, Raster/Inkrement) im Panel und im Radialmenü
 - ✅ Anzeige des Snap-Status im Viewport-Badge
-- 🔜 Druckabhängiger Snap (leichter Druck = frei, voller Druck = Snap) – braucht das Skizzen-Werkzeug aus 4.2, weil Blender den Stiftdruck nur in eigenen modalen Werkzeugen liefert
+- ✅ Druckabhängiger Snap im Skizzen-Werkzeug (0.2): unter 30 % Druck frei, 30–70 % nach Snap-Schalter, über 70 % erzwungen. Mit der Maus: Snap-Schalter, Strg kehrt ihn um
+
+### 5.0 Icons und Kacheln
+- ✅ Eigene Icons in zwei Farben (0.2): Hellgrau zeigt den Zusammenhang, die Akzentfarbe (Grün) das Element, auf das die Funktion wirkt – bei Bevel die gerundete Ecke, bei Mirror die gespiegelte Hälfte, bei Tangente die berührende Linie. Quellen als SVG in `docs/icons`, erzeugt mit `scripts/make_icons.py`.
+- ✅ Toolbox aus quadratischen Kacheln mit großem Icon, vier pro Zeile, Beschriftung darunter.
 
 ### 5.2 Stift und Schnellzugriff
-- ✅ **Radialmenü** (Pie) mit 8 Schnellzugriffen: Box, Zylinder, Extrudieren, Bevel, Array, Boolean-Differenz, Snap, Sync. Standardtaste **Umschalt+Alt+Q** im 3D-Viewport und Node-Editor, frei belegbar in den Add-on-Einstellungen. Stift-Seitentasten legt man in den Tablet-Einstellungen des Systems auf diese Taste.
-- ✅ Große Buttons (44 px) in der Toolbox
+- ✅ **Radialmenü** (Pie) mit 8 Schnellzugriffen: Box, Snap, Gruppe, Duplikat, Sync, Move, Sync aufheben, Undo (wie im Mockup). Standardtaste **Umschalt+Alt+Q** im 3D-Viewport und Node-Editor, frei belegbar in den Add-on-Einstellungen. Stift-Seitentasten legt man in den Tablet-Einstellungen des Systems auf diese Taste.
+- ✅ Schnellzugriff-Leiste oben im Viewport (0.2): Box, Kugel, Linie · Snap · Gruppe, Duplikat, Array · Sync, Sync aufheben
 - ✅ Wert-Eingabe per Doppelklick/Doppeltippen auf jedes Feld (Blender-Standard)
 - 🔜 Gesten (Halten an der Stiftspitze öffnet das Menü am Cursor) im Skizzen-Werkzeug
 
@@ -166,5 +172,5 @@ tests/                 headless Tests mit dem bpy-Modul
 
 ## 8. Roadmap
 - **0.1** (diese Version): Node-System, alle ✅-Werkzeuge, Sync/Bake, Gruppen, Radialmenü, Druck-Check und STL-Export.
-- **0.2**: Skizzen-Werkzeug im Viewport mit geometrischen Constraints und Solver, druckabhängiger Snap.
-- **0.3**: Array entlang Pfad, Tabellen-Parameter, 3MF-Export, Überhang- und Wandstärke-Analyse.
+- **0.2** (diese Version): Skizzen-Werkzeug im Viewport mit geometrischen Constraints und Solver, druckabhängiger Snap, eigene zweifarbige Icons, Toolbox mit quadratischen Kacheln, Schnellzugriff-Leiste, Radialmenü wie im Mockup.
+- **0.3**: Spline, Fillet einzelner Kanten, Radierer-Ende des Stifts, Array entlang Pfad, Tabellen-Parameter, 3MF-Export, Überhang- und Wandstärke-Analyse.

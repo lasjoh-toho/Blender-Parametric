@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 import bpy
-from bpy.props import BoolProperty, PointerProperty
+from bpy.props import BoolProperty, EnumProperty, FloatProperty, PointerProperty
 
 from .core.evaluator import TREE_ID
 
@@ -14,6 +14,22 @@ class PARAM_PG_scene(bpy.types.PropertyGroup):
         name="Parameter im Viewport",
         description="Benannte Parameter des aktiven Objekts im 3D-Viewport anzeigen",
         default=True,
+    )
+    profile_mode: EnumProperty(
+        name="Profil",
+        description="Was mit einem neuen Profil geschieht",
+        items=[("EXTRUDE", "Extrude", "Profil in die Höhe ziehen"), ("REVOLVE", "Revolve", "Profil um die Z-Achse drehen")],
+        default="EXTRUDE",
+    )
+    show_sketch: BoolProperty(
+        name="Skizze im Viewport",
+        description="Skizze des aktiven Objekts mit Maßen im 3D-Viewport anzeigen",
+        default=True,
+    )
+    sketch_grid: FloatProperty(
+        name="Raster",
+        description="Rasterweite, auf die Skizzenpunkte bei aktivem Snap einrasten (0 = aus)",
+        default=1.0, min=0.0, subtype="DISTANCE",
     )
 
 

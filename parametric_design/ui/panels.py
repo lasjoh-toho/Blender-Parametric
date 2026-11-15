@@ -4,8 +4,9 @@ import bpy
 from ..core import evaluator
 from ..core.evaluator import TREE_ID
 from ..nodes import sketch as sketch_nodes
-from ..ops import graph, sketch_ops
-from . import icons
+from ..nodes import nodes as node_types
+from ..ops import graph, printing, proportion, sketch_ops
+from . import icons, overlay
 
 CATEGORY = "Parametric"
 COLUMNS = 4
@@ -78,10 +79,30 @@ def draw_parameters(context, layout):
     col = layout.column(align=True)
     if not params:
         col.label(text="Noch keine benannten Parameter")
+    scene = context.scene
     for node in params:
+        lo, hi = node_types.parameter_limits(node, scene)
+        linked = node_types.proportion_of(tree, node) is not None
         row = col.row(align=True)
-        row.prop(node, "value", text=node.param_name)
-        row.prop(node, "expose", text="", icon="EXPORT" if node.expose else "BLANK1", emboss=node.expose)
+        row.prop(node, "pick", text="", icon="LINKED" if linked else "NONE")
+        field = row.row(align=True)
+        field.enabled = not node.locked
+        field.alert = (lo is not None and node.value < lo - 1e-9) or (hi is not None and node.value > hi + 1e-9)
+        field.prop(node, "value", text=node.param_name)
+        row.prop(node, "locked", text="", icon="LOCKED" if node.locked else "UNLOCKED")
+        row.operator("param.parameter_settings", text="", icon="PREFERENCES").node_name = node.name
+    if tree.param_notice:
+        row = layout.row()
+        row.alert = True
+        row.label(text=tree.param_notice, icon="INFO")
+    if len(params) >= 2:
+        row = layout.row(align=True)
+        row.operator("param.proportion_lock", text="Verhältnis", icon="LINKED").kind = "RATIO"
+        row.operator("param.proportion_lock", text="Differenz", icon="DRIVER_DISTANCE").kind = "DIFFERENCE"
+    for index, group in enumerate(tree.param_proportions):
+        row = layout.row(align=True)
+        row.label(text=proportion.describe(tree, group), icon="LINKED")
+        row.operator("param.proportion_unlock", text="", icon="X").index = index
     row = layout.row(align=True)
     row.scale_y = 1.6
     row.operator("param.add_parameter", text="Länge", icon_value=icons.get("param_length")).unit = "LENGTH"
@@ -264,6 +285,21 @@ class PARAM_PT_constraints(_ViewPanel, bpy.types.Panel):
             con("HORIZONTAL", "Horiz."), con("VERTICAL", "Vertikal"), con("COINCIDENT", "Deckung"), con("MIDPOINT", "Mitte"),
             con("RADIUS", "Radius"),
         ])
+        settings = context.scene.param_settings
+        layout.prop(settings, "show_suggestions", icon_value=icons.get("con_distance"))
+        if settings.show_suggestions:
+            found = sketch_ops.suggestions(node)
+            col = layout.column(align=True)
+            for index, item in enumerate(found):
+                row = col.row(align=True)
+                prefix = "R " if item["kind"] == "RADIUS" else ""
+                row.label(text=f"{index + 1}  {item['label']}  {prefix}{overlay.length_text(context.scene, item['value'])}")
+                op = row.operator("param.sketch_suggest", text="", icon="DRIVER")
+                op.index, op.mode = index, "PARAMETER"
+                op = row.operator("param.sketch_suggest", text="", icon="CHECKMARK")
+                op.index, op.mode = index, "MEASURE"
+            if not found and node.points:
+                col.label(text="Keine offenen Maße" if node.sketch_dof == 0 else "Keine Vorschläge", icon="INFO")
         if not node.constraints:
             return
         layout.label(text="Aktive Constraints")
@@ -359,21 +395,57 @@ class PARAM_PT_snap(_ViewPanel, bpy.types.Panel):
         layout.prop(ts, "snap_target", expand=True)
 
 
+LEVEL_ICONS = {"OK": "STRIP_COLOR_04", "WARN": "STRIP_COLOR_03", "FAIL": "STRIP_COLOR_01"}
+
+
 class PARAM_PT_print(_ViewPanel, bpy.types.Panel):
     bl_label = "3D-Druck"
     bl_parent_id = "PARAM_PT_main"
 
     def draw(self, context):
         layout = self.layout
+        scene = context.scene
+        layout.prop(scene.param_print, "preset", expand=True)
         tool_grid(layout, context, [
-            ("param.print_check", {}, "Check", "print_check"),
+            ("param.print_check", {}, "Prüfen", "print_check"),
             ("param.export_stl", {}, "STL", "export"),
         ])
-        report = context.scene.get("param_print_report")
-        if report:
-            box = layout.box()
-            for i, line in enumerate(report.split("\n")):
-                box.label(text=line, icon=("CHECKMARK" if line == "Druckbereit" else "ERROR") if i == 0 else "BLANK1")
+        report = printing.report_of(scene)
+        if report is None:
+            return
+        obj = context.active_object
+        box = layout.box()
+        row = box.row()
+        row.label(text=report["verdict"], icon=LEVEL_ICONS[report["level"]])
+        if obj is None or obj.name != report["object"]:
+            box.label(text=f"gilt für {report['object']}", icon="INFO")
+        box.label(text=report["size"])
+        box.label(text=f"{report['volume']} · {report['parts']} {'Teil' if report['parts'] == 1 else 'Teile'}")
+        active = printing.runtime["active"] if printing.runtime["object"] == report["object"] else ""
+        for item in report["checks"]:
+            col = box.column(align=True)
+            row = col.row(align=True)
+            row.label(text=item["label"], icon=LEVEL_ICONS[item["level"]])
+            if item["count"]:
+                row.operator("param.print_highlight", text="", icon="HIDE_OFF" if active == item["id"] else "HIDE_ON",
+                             depress=active == item["id"]).check_id = item["id"]
+            sub = col.row()
+            sub.enabled = item["level"] != "OK"
+            sub.label(text=item["text"], icon="BLANK1")
+
+
+class PARAM_PT_print_profile(_ViewPanel, bpy.types.Panel):
+    bl_label = "Druckprofil"
+    bl_parent_id = "PARAM_PT_print"
+    bl_options = {"DEFAULT_CLOSED"}
+
+    def draw(self, context):
+        profile = context.scene.param_print
+        col = self.layout.column(align=True)
+        for name in ("nozzle", "layer_height", "min_wall", "min_detail", "max_overhang", "clearance"):
+            col.prop(profile, name)
+        col = self.layout.column(align=True)
+        col.prop(profile, "bed")
 
 
 def draw_quick_access(self, context):
@@ -446,6 +518,7 @@ classes = (
     PARAM_PT_sync,
     PARAM_PT_snap,
     PARAM_PT_print,
+    PARAM_PT_print_profile,
     PARAM_PT_node_sync,
     PARAM_PT_node_parameters,
 )

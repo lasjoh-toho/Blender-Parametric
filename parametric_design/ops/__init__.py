@@ -1,16 +1,17 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 import bpy
 
-from . import printing, sketch_ops, sync, tools, workspace
+from . import printing, proportion, sketch_ops, sync, tools, workspace
 
 @bpy.app.handlers.persistent
 def _reset_sketch_tool(_dummy):
     sketch_ops.runtime["session"] = None
+    printing.clear_highlight()
     for wm in bpy.data.window_managers:
         wm.param_sketch_running = False
 
 
-classes = tools.classes + sync.classes + workspace.classes + printing.classes + sketch_ops.classes
+classes = tools.classes + sync.classes + workspace.classes + printing.classes + proportion.classes + sketch_ops.classes
 
 
 def register():
@@ -24,6 +25,7 @@ def unregister():
     if _reset_sketch_tool in bpy.app.handlers.load_post:
         bpy.app.handlers.load_post.remove(_reset_sketch_tool)
     sketch_ops.runtime["session"] = None
+    printing.clear_highlight()
     sketch_ops.unregister_props()
     for cls in reversed(classes):
         bpy.utils.unregister_class(cls)

@@ -13,12 +13,14 @@ from mathutils import Vector
 from ..ops import sketch_ops
 from .overlay import length_text
 
-BASE = (0.86, 0.86, 0.86, 1.0)
+BASE = (0.97, 0.97, 0.97, 1.0)
+HALO = (0.0, 0.0, 0.0, 0.55)  # dark edge under the outline, so it stands out on any model
 ACCENT = (0.24, 0.86, 0.66, 1.0)
-CONSTRUCTION = (0.6, 0.6, 0.6, 0.55)
+CONSTRUCTION = (0.62, 0.62, 0.62, 0.6)
 FIXED = (1.0, 0.62, 0.2, 1.0)
 CONFLICT = (1.0, 0.35, 0.3, 1.0)
 DIMENSION = (1.0, 0.8, 0.3, 1.0)
+SUGGESTION = (0.75, 0.75, 0.75, 0.75)
 
 _handle = [None]
 
@@ -34,6 +36,30 @@ def _polylines(shader, lines, color, width):
     shader.uniform_float("lineWidth", width)
     shader.uniform_float("color", color)
     batch.draw(shader)
+
+
+def _dashed(lines, dash, gap):
+    """Cut screen-space polylines into dashes."""
+    out = []
+    period = dash + gap
+    for line in lines:
+        travelled = 0.0
+        for a, b in zip(line, line[1:]):
+            length = math.hypot(b[0] - a[0], b[1] - a[1])
+            if length < 1e-6:
+                continue
+            ux, uy = (b[0] - a[0]) / length, (b[1] - a[1]) / length
+            position = 0.0
+            while position < length:
+                phase = (travelled + position) % period
+                if phase < dash:
+                    end = min(length, position + dash - phase)
+                    out.append([(a[0] + ux * position, a[1] + uy * position), (a[0] + ux * end, a[1] + uy * end)])
+                    position = end
+                else:
+                    position += period - phase
+            travelled += length
+    return out
 
 
 def _squares(shader, centers, color, half):
@@ -54,7 +80,10 @@ def _text(x, y, text, size, color):
     blf.color(0, *color)
     w, _h = blf.dimensions(0, text)
     blf.position(0, x - w / 2, y, 0)
+    blf.enable(0, blf.SHADOW)
+    blf.shadow(0, 3, 0.0, 0.0, 0.0, 0.9)
     blf.draw(0, text)
+    blf.disable(0, blf.SHADOW)
 
 
 def _draw():
@@ -101,9 +130,11 @@ def _draw():
     shader.bind()
     shader.uniform_float("viewportSize", (region.width, region.height))
     conflict = "Konflikt" in node.sketch_status
-    _polylines(shader, groups["construction"], CONSTRUCTION, 1.5 * ui)
-    _polylines(shader, groups["base"], CONFLICT if conflict else BASE, 2.5 * ui)
-    _polylines(shader, groups["selected"], ACCENT, 3.5 * ui)
+    # the outline that builds the part is the strongest element; helper lines stay thin and dashed
+    _polylines(shader, _dashed(groups["construction"], 6.0 * ui, 5.0 * ui), CONSTRUCTION, 1.2 * ui)
+    _polylines(shader, groups["base"] + groups["selected"], HALO, 7.0 * ui)
+    _polylines(shader, groups["base"], CONFLICT if conflict else BASE, 3.5 * ui)
+    _polylines(shader, groups["selected"], ACCENT, 4.5 * ui)
 
     session = sketch_ops.runtime["session"]
     if running and session is not None and session.node == node:
@@ -117,9 +148,10 @@ def _draw():
         co = to2d(p.x, p.y)
         if co is not None:
             (selected if p.select else fixed if p.fixed else normal).append(co)
-    _squares(flat, normal, BASE, 3.5 * ui)
-    _squares(flat, fixed, FIXED, 4.5 * ui)
-    _squares(flat, selected, ACCENT, 5.0 * ui)
+    _squares(flat, normal + fixed + selected, HALO, 6.5 * ui)
+    _squares(flat, normal, BASE, 4.5 * ui)
+    _squares(flat, fixed, FIXED, 5.0 * ui)
+    _squares(flat, selected, ACCENT, 5.5 * ui)
     if running and session is not None and session.cursor is not None:
         co = to2d(*session.cursor)
         if co is not None:
@@ -154,6 +186,21 @@ def _draw():
             text = f"{math.degrees(con.value):.1f}°"
         if co is not None:
             _text(co[0], co[1] + 8 * ui, text + suffix, size, DIMENSION)
+
+    # suggested dimensions: numbered like the list in the panel
+    if settings.show_suggestions:
+        for index, item in enumerate(sketch_ops.suggestions(node)):
+            if item["kind"] == "DISTANCE":
+                a, b = P[item["points"][0]], P[item["points"][1]]
+                co = to2d((a.x + b.x) / 2, (a.y + b.y) / 2)
+                text = length_text(scene, item["value"])
+            else:
+                kind, number = item["curve"]
+                center = P[node.circles[number].center] if kind == "CIRCLE" else P[node.arcs[number].center]
+                co = to2d(center.x + item["value"] * 0.7071, center.y + item["value"] * 0.7071)
+                text = "R " + length_text(scene, item["value"])
+            if co is not None:
+                _text(co[0], co[1] + 8 * ui, f"{index + 1}: {text} ?", size, SUGGESTION)
 
 
 def register():

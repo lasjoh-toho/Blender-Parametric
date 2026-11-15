@@ -14,8 +14,9 @@ def register():
     bpy.types.VIEW3D_HT_tool_header.append(panels.draw_quick_access)
     if not bpy.app.background:
         overlay.register()
-        from . import sketch_overlay
+        from . import print_overlay, sketch_overlay
         sketch_overlay.register()
+        print_overlay.register()
     follow.register()
 
 
@@ -23,7 +24,8 @@ def unregister():
     follow.unregister()
     overlay.unregister()
     if not bpy.app.background:
-        from . import sketch_overlay
+        from . import print_overlay, sketch_overlay
+        print_overlay.unregister()
         sketch_overlay.unregister()
     pie.unregister_keymaps()
     bpy.types.VIEW3D_HT_tool_header.remove(panels.draw_quick_access)

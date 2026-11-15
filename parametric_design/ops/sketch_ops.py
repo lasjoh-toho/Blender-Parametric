@@ -4,7 +4,7 @@
 import math
 
 import bpy
-from bpy.props import BoolProperty, EnumProperty, FloatProperty, IntProperty
+from bpy.props import BoolProperty, EnumProperty, FloatProperty, IntProperty, StringProperty
 from bpy_extras.view3d_utils import location_3d_to_region_2d, region_2d_to_origin_3d, region_2d_to_vector_3d
 from mathutils import Vector
 from mathutils.geometry import intersect_line_plane
@@ -208,6 +208,71 @@ class PARAM_OT_sketch_constrain(_SketchOperator, bpy.types.Operator):
         scheduler.flush()
         if "Konflikt" in node.sketch_status:
             self.report({"WARNING"}, "Dieser Constraint widerspricht den anderen")
+        return {"FINISHED"}
+
+
+def parameter_names(tree):
+    """Parameter name -> value as formulas see it (angles in degrees)."""
+    names = {}
+    for n in tree.nodes:
+        name = getattr(n, "param_name", "")
+        if name and hasattr(n, "parameter_value"):
+            value = n.parameter_value()
+            names[name] = math.degrees(value) if getattr(n, "param_unit", "") == "ANGLE" else value
+    return names
+
+
+def suggestions(node):
+    return node.suggestions(parameter_names(node.id_data))
+
+
+def apply_suggestion(node, suggestion, name=None):
+    """Turn a suggested dimension into a constraint; with ``name`` it is driven by a new parameter."""
+    tree = node.id_data
+    expression = ""
+    if name is not None:
+        used = {getattr(n, "param_name", "") for n in tree.nodes}
+        base = name.strip() or ("radius" if suggestion["kind"] == "RADIUS" else "mass")
+        name, i = base, 1
+        if not name.strip() or name in used or base in {"radius", "mass"}:
+            while f"{base}{i}" in used:
+                i += 1
+            name = f"{base}{i}"
+        param = graph.add_node(tree, "PARAM_N_LengthParam", (node.location.x - graph.NODE_GAP, node.location.y - 160))
+        param.param_name = name
+        param.value = suggestion["value"]
+        expression = name
+    return node.add_constraint(suggestion["kind"], suggestion["points"], suggestion["curve"],
+                               value=suggestion["value"], expression=expression)
+
+
+class PARAM_OT_sketch_suggest(_SketchOperator, bpy.types.Operator):
+    """Take this suggested dimension"""
+
+    bl_idname = "param.sketch_suggest"
+    bl_label = "Maß übernehmen"
+    bl_options = {"REGISTER", "UNDO"}
+
+    index: IntProperty()
+    mode: EnumProperty(items=[
+        ("PARAMETER", "Als Parameter", "Das Maß wird ein benannter Parameter, der die Skizze steuert"),
+        ("MEASURE", "Nur Maß", "Das Maß wird als fester Wert in die Skizze eingetragen"),
+    ])
+    param_name: StringProperty(name="Name", default="")
+
+    @classmethod
+    def description(cls, context, props):
+        return next(i[2] for i in cls.__annotations__["mode"].keywords["items"] if i[0] == props.mode)
+
+    def execute(self, context):
+        node = active_sketch(context)
+        found = suggestions(node)
+        if not 0 <= self.index < len(found):
+            return {"CANCELLED"}
+        with scheduler.suspended():
+            apply_suggestion(node, found[self.index], self.param_name if self.mode == "PARAMETER" else None)
+        scheduler.request(node.id_data)
+        scheduler.flush()
         return {"FINISHED"}
 
 
@@ -499,6 +564,7 @@ def _redraw(context):
 classes = (
     PARAM_OT_sketch_add,
     PARAM_OT_sketch_constrain,
+    PARAM_OT_sketch_suggest,
     PARAM_OT_sketch_fix,
     PARAM_OT_sketch_construction,
     PARAM_OT_sketch_delete,

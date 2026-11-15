@@ -1,5 +1,16 @@
 # Änderungen
 
+## 0.3.0
+
+- Parameterbereiche: Minimum und Maximum je Parameter, auf Wunsch aus dem Druckprofil (Mindestwand, kleinstes Detail, Passungsspiel)
+- Schloss „Wert fest“ für Parameter
+- Proportionssperre: Parameter im festen Verhältnis oder mit fester Differenz verbinden; jedes Mitglied kann führen
+- Druckprofil der Szene mit Vorgaben für FDM und Harz
+- Druckprüfung als Ampel: wasserdicht, Flächenrichtung, Bauraum, Wandstärke, Überhang, Standfestigkeit, Schlankheit
+- Betroffene Flächen lassen sich im Viewport einfärben
+- Maßvorschläge in der Skizze: Maße, die einen offenen Freiheitsgrad schließen, mit einem Tipp als Parameter oder festes Maß übernehmen
+- Skizze im Viewport: Konturlinien kräftiger mit dunklem Rand, Hilfslinien dünn und gestrichelt
+
 ## 0.2.0
 
 - Freie Skizze im Viewport: Linie, Bogen, Kreis, Rechteck, Auswahl, Punkte ziehen, Hilfslinien, Löschen

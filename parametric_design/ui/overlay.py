@@ -12,14 +12,28 @@ from ..ops import graph
 
 _handle = [None]
 
+_LENGTH_UNITS = {
+    "MICROMETERS": (1e-6, "µm"),
+    "MILLIMETERS": (1e-3, "mm"),
+    "CENTIMETERS": (1e-2, "cm"),
+    "METERS": (1.0, "m"),
+    "KILOMETERS": (1e3, "km"),
+}
+
 
 def _format(node, scene):
     unit = getattr(node, "param_unit", "NUMBER")
     if unit == "ANGLE":
         return f"{math.degrees(node.value):.1f}°"
     if unit == "LENGTH":
-        return bpy.utils.units.to_string(scene.unit_settings.system, "LENGTH",
-                                         node.value * scene.unit_settings.scale_length, precision=2)
+        units = scene.unit_settings
+        meters = node.value * units.scale_length
+        factor, suffix = _LENGTH_UNITS.get(units.length_unit, (None, ""))
+        if units.system == "METRIC" and factor is not None:
+            return f"{meters / factor:.4g} {suffix}"
+        if units.system == "NONE":
+            return f"{node.value:.4g}"
+        return bpy.utils.units.to_string(units.system, "LENGTH", meters, precision=3)
     return f"{node.value:g}"
 
 

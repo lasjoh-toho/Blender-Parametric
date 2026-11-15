@@ -10,6 +10,7 @@
 - 60 eigene zweifarbige Icons: die Akzentfarbe zeigt das Element, auf das die Funktion wirkt
 - Toolbox aus quadratischen Kacheln mit großen Icons, Kategorien wie im Mockup
 - Schnellzugriff-Leiste oben im Viewport; Radialmenü belegt wie im Mockup
+- Maße in der Skizze nutzen die Einheit der Szene; derselbe Constraint wird nicht doppelt angelegt
 - Behoben: Absturz beim erneuten Aktivieren oder Neuinstallieren mit vorhandenen Graphen
 - Behoben: Parameter-Anzeige im Viewport nutzt die Einheit der Szene
 

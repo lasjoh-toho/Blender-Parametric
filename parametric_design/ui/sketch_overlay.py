@@ -11,6 +11,7 @@ from gpu_extras.batch import batch_for_shader
 from mathutils import Vector
 
 from ..ops import sketch_ops
+from .overlay import length_text
 
 BASE = (0.86, 0.86, 0.86, 1.0)
 ACCENT = (0.24, 0.86, 0.66, 1.0)
@@ -54,14 +55,6 @@ def _text(x, y, text, size, color):
     w, _h = blf.dimensions(0, text)
     blf.position(0, x - w / 2, y, 0)
     blf.draw(0, text)
-
-
-def _length_text(scene, value):
-    units = scene.unit_settings
-    if units.system == "NONE":
-        return f"{value:.4g}"
-    return bpy.utils.units.to_string(units.system, "LENGTH", value * units.scale_length, precision=3,
-                                     split_unit=False, compatible_unit=False)
 
 
 def _draw():
@@ -144,7 +137,7 @@ def _draw():
         if con.kind == "DISTANCE":
             a, b = P[con.p1], P[con.p2]
             co = to2d((a.x + b.x) / 2, (a.y + b.y) / 2)
-            text = _length_text(scene, math.hypot(a.x - b.x, a.y - b.y))
+            text = length_text(scene, math.hypot(a.x - b.x, a.y - b.y))
         elif con.kind == "RADIUS":
             if con.curve_kind == "CIRCLE":
                 c = node.circles[con.curve]
@@ -154,7 +147,7 @@ def _draw():
                 center = P[arc.center]
                 radius = math.hypot(P[arc.start].x - center.x, P[arc.start].y - center.y)
             co = to2d(center.x + radius * 0.7071, center.y + radius * 0.7071)
-            text = "R " + _length_text(scene, radius)
+            text = "R " + length_text(scene, radius)
         else:  # ANGLE
             a = P[con.p1]
             co = to2d(a.x, a.y)

@@ -28,8 +28,9 @@ def _cell_units(context, columns):
     region = context.region
     ui_scale = context.preferences.system.ui_scale or 1.0
     unit = 20.0 * ui_scale
-    width = (region.width if region is not None else 240 * ui_scale) - 48 * ui_scale  # tabs, scrollbar, margins
-    return max(2.0, min(6.0, width / columns / unit))
+    width = (region.width if region is not None else 240 * ui_scale) - 44 * ui_scale  # tabs, scrollbar, margins
+    gap = 0.1  # space between two tiles
+    return max(2.0, min(6.0, (width / unit - gap * (columns - 1)) / columns))
 
 
 def tool_grid(layout, context, tools, columns=COLUMNS):
@@ -40,26 +41,29 @@ def tool_grid(layout, context, tools, columns=COLUMNS):
     element and the button under it carries the label.
     """
     units = _cell_units(context, columns)
-    icon_scale = max(1.2, units - 1.9)
+    icon_scale = max(1.6, units - 1.0)
     col = layout.column(align=False)
     for start in range(0, len(tools), columns):
-        row = col.row(align=False)
-        chunk = tools[start:start + columns]
-        for tool in chunk:
+        row = col.row(align=True)
+        row.alignment = "LEFT"
+        for index, tool in enumerate(tools[start:start + columns]):
             idname, props, label, icon = tool[:4]
             active = len(tool) > 4 and tool[4]
+            if index:
+                gap = row.column()
+                gap.ui_units_x = 0.1
+                gap.label(text="")
             cell = row.column(align=True)
+            cell.ui_units_x = units  # fixed width, so a lone tile in a row stays square
             tile = cell.box()
             pad = tile.row()
             pad.alignment = "CENTER"
             pad.template_icon(icon_value=icons.get(icon), scale=icon_scale)
             button = cell.row(align=True)
-            button.scale_y = 1.25
+            button.scale_y = 1.1
             op = button.operator(idname, text=label, depress=active)
             for key, value in props.items():
                 setattr(op, key, value)
-        for _ in range(columns - len(chunk)):
-            row.column()
 
 
 # ---------------------------------------------------------------------------
@@ -221,8 +225,8 @@ class PARAM_PT_sketch(_ViewPanel, bpy.types.Panel):
         layout.label(text="Fertige Profile")
         row = layout.row(align=True)
         row.scale_y = 1.4
-        row.prop_enum(settings, "profile_mode", "EXTRUDE", icon_value=icons.get("extrude"))
-        row.prop_enum(settings, "profile_mode", "REVOLVE", icon_value=icons.get("revolve"))
+        row.prop_enum(settings, "profile_mode", "EXTRUDE")
+        row.prop_enum(settings, "profile_mode", "REVOLVE")
         mode = settings.profile_mode
         tool_grid(layout, context, [
             ("param.add_part", {"kind": "RECTANGLE", "profile_mode": mode}, "Rechteck", "rectangle"),
@@ -298,7 +302,7 @@ class PARAM_PT_modifiers(_ViewPanel, bpy.types.Panel):
 
     def draw(self, context):
         tool_grid(self.layout, context, [
-            ("param.add_operation", {"kind": "TRANSFORM"}, "Transform", "transform"),
+            ("param.add_operation", {"kind": "TRANSFORM"}, "Bewegen", "transform"),
             ("param.add_operation", {"kind": "BEVEL"}, "Bevel", "bevel"),
             ("param.add_operation", {"kind": "SMOOTH"}, "Soften", "smooth"),
         ])
@@ -310,10 +314,10 @@ class PARAM_PT_structure(_ViewPanel, bpy.types.Panel):
 
     def draw(self, context):
         tool_grid(self.layout, context, [
-            ("param.duplicate", {"mode": "COPY"}, "Duplicate", "duplicate"),
+            ("param.duplicate", {"mode": "COPY"}, "Kopie", "duplicate"),
             ("param.duplicate", {"mode": "INSTANCE"}, "Instance", "instance"),
-            ("param.add_operation", {"kind": "LINEAR_ARRAY"}, "Array lin.", "array_linear"),
-            ("param.add_operation", {"kind": "RADIAL_ARRAY"}, "Array rad.", "array_radial"),
+            ("param.add_operation", {"kind": "LINEAR_ARRAY"}, "Linear", "array_linear"),
+            ("param.add_operation", {"kind": "RADIAL_ARRAY"}, "Radial", "array_radial"),
             ("param.group_objects", {}, "Gruppe", "group"),
         ])
 
@@ -362,7 +366,7 @@ class PARAM_PT_print(_ViewPanel, bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         tool_grid(layout, context, [
-            ("param.print_check", {}, "Druck-Check", "print_check"),
+            ("param.print_check", {}, "Check", "print_check"),
             ("param.export_stl", {}, "STL", "export"),
         ])
         report = context.scene.get("param_print_report")

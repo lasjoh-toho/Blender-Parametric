@@ -146,6 +146,12 @@ class PARAM_N_Sketch(ParamNode, bpy.types.Node):
         return len(self.arcs) - 1
 
     def add_constraint(self, kind, points=(), curve=None, value=0.0, expression=""):
+        if not sketch_solver.KINDS[kind][2]:
+            # the same geometric constraint twice would only clutter the list
+            wanted = (kind, tuple(points), tuple(curve) if curve is not None else ("NONE", -1))
+            for con in self.constraints:
+                if (con.kind, tuple(con.point_refs()), (con.curve_kind, con.curve)) == wanted:
+                    return con
         con = self.constraints.add()
         con.kind = kind
         for name, index in zip(("p1", "p2", "p3", "p4"), points):

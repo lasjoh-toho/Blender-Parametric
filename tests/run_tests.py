@@ -389,6 +389,28 @@ def sketch_rectangle_with_dimensions():
 
 
 @test
+def sketch_repeated_constraint_and_dimension_text():
+    bpy.ops.object.select_all(action="DESELECT")
+    bpy.context.view_layer.objects.active = None
+    bpy.ops.param.sketch_add(kind="RECT", x1=0, y1=0, x2=31, y2=19)
+    sk = sketch_of(bpy.context.active_object)
+    count = len(sk.constraints)
+    select(sk, lines=[0])
+    bpy.ops.param.sketch_constrain(kind="HORIZONTAL")
+    assert len(sk.constraints) == count, "the same constraint was added twice"
+    from parametric_design.ui.overlay import length_text
+    scene = bpy.context.scene
+    old = (scene.unit_settings.scale_length, scene.unit_settings.length_unit)
+    scene.unit_settings.scale_length = 0.001
+    scene.unit_settings.length_unit = "MILLIMETERS"
+    try:
+        assert length_text(scene, 25.0) == "25 mm", length_text(scene, 25.0)
+        assert length_text(scene, 0.06) == "0.06 mm", length_text(scene, 0.06)
+    finally:
+        scene.unit_settings.scale_length, scene.unit_settings.length_unit = old
+
+
+@test
 def sketch_hole_and_conflict():
     bpy.ops.object.select_all(action="DESELECT")
     bpy.context.view_layer.objects.active = None
@@ -508,6 +530,7 @@ class FakeLayout:
         assert hasattr(data, name), f"{data} has no property {name}"
 
     def prop_enum(self, data, name, value, **kw):
+        assert set(kw) <= {"text", "text_ctxt", "translate", "icon"}, f"prop_enum does not take {sorted(kw)}"
         assert value in {i.identifier for i in data.bl_rna.properties[name].enum_items}
 
     def template_icon(self, icon_value=0, scale=1.0):

@@ -10,6 +10,10 @@ from .evaluator import TREE_ID
 DELAY = 0.03
 _pending = set()
 _suspended = [0]
+# False while the add-on registers or unregisters its classes: Blender calls
+# NodeTree.update() on existing trees then, and touching their properties at
+# that moment crashes Blender.
+_ready = [False]
 
 
 class suspended:
@@ -27,7 +31,7 @@ def parametric_trees():
 
 
 def request(tree):
-    if tree is None or evaluator.state["evaluating"]:
+    if not _ready[0] or tree is None or evaluator.state["evaluating"]:
         return
     try:
         tree.param_dirty = True
@@ -132,9 +136,11 @@ def _on_load(_dummy):
 def register():
     bpy.app.handlers.depsgraph_update_post.append(_on_depsgraph_update)
     bpy.app.handlers.load_post.append(_on_load)
+    _ready[0] = True
 
 
 def unregister():
+    _ready[0] = False
     if _on_depsgraph_update in bpy.app.handlers.depsgraph_update_post:
         bpy.app.handlers.depsgraph_update_post.remove(_on_depsgraph_update)
     if _on_load in bpy.app.handlers.load_post:

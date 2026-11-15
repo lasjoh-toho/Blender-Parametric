@@ -18,7 +18,7 @@ def register():
 
 
 def unregister():
-    scheduler.unregister()
+    scheduler.unregister()  # first, so no evaluation runs while classes go away
     ui.unregister()
     ops.unregister()
     nodes.unregister()

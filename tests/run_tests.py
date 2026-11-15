@@ -341,6 +341,17 @@ def print_check_and_stl_export():
 
 
 @test
+def reregister_with_existing_trees():
+    """Disabling/re-enabling (or reinstalling) must not crash with trees in the file."""
+    obj = new_object("BOX")
+    pd.unregister()
+    pd.register()
+    node(obj.param_tree, "PARAM_N_Box").inputs["Höhe"].default_value = 9
+    scheduler.flush()
+    approx(mesh_stats(obj)["dimensions"][2], 9)
+
+
+@test
 def save_and_reload_keeps_graph():
     obj = new_object("BOX")
     name = obj.name
